@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { Suspense } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { AttendancePanel } from "@/components/attendance-panel";
-import { AttendanceRscRefresh } from "@/components/attendance-rsc-refresh";
 import { SignOutButton } from "@/components/sign-out-button";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -135,10 +133,6 @@ export default async function EmployeePage({
             を作成してください。
           </p>
         ) : null}
-
-        <Suspense fallback={null}>
-          <AttendanceRscRefresh />
-        </Suspense>
 
         <AttendancePanel
           key={[

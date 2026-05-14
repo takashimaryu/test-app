@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { updateTodayAttendanceTimesAction } from "@/app/employee/attendance-actions";
+import { FormPendingSubmit } from "@/components/form-pending-submit";
 import { isoToJstTimeHm } from "@/lib/time/jst";
 
 /** 打刻の「いま」との差が分からないよう、秒まで出す（分単位だけだと同一分の再打刻が同じ表示になる） */
@@ -85,12 +86,10 @@ export function AttendanceTimesTapEdit({
             />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <button
-              type="submit"
+            <FormPendingSubmit
               className="flex-1 rounded-xl border border-neutral-300 bg-neutral-900 py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] dark:border-neutral-600 dark:bg-white dark:text-neutral-950"
-            >
-              保存
-            </button>
+              label="保存"
+            />
             <button
               type="button"
               onClick={closeEdit}

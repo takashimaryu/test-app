@@ -6,6 +6,7 @@ import {
 } from "@/app/employee/attendance-actions";
 import { AttendanceJstClock } from "@/components/attendance-jst-clock";
 import { AttendanceTimesTapEdit } from "@/components/attendance-times-tap-edit";
+import { FormPendingSubmit } from "@/components/form-pending-submit";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 
 export type TodayAttendance = {
@@ -167,9 +168,7 @@ export function AttendancePanel({
         {!showRow ? (
           <>
             <form action={clockInAction} className="flex-1">
-              <button type="submit" className={inOn}>
-                出勤
-              </button>
+              <FormPendingSubmit className={inOn} label="出勤" />
             </form>
             <div className="flex-1">
               <button type="button" disabled className={outOff}>
@@ -180,36 +179,27 @@ export function AttendancePanel({
         ) : isWorking ? (
           <>
             <form action={removeTodayAttendanceAction} className="flex-1">
-              <button type="submit" className={inOn}>
-                出勤
-              </button>
+              <FormPendingSubmit className={inOn} label="出勤" pendingLabel="取り消し中…" />
             </form>
             <form action={clockOutAction} className="flex-1">
-              <button type="submit" className={outOn}>
-                退勤
-              </button>
+              <FormPendingSubmit className={outOn} label="退勤" />
             </form>
           </>
         ) : (
           <>
             <form action={removeTodayAttendanceAction} className="flex-1">
-              <button type="submit" className={inOn}>
-                出勤
-              </button>
+              <FormPendingSubmit className={inOn} label="出勤" pendingLabel="取り消し中…" />
             </form>
             <div className="flex flex-1 flex-col gap-2">
               <form action={clockOutAction} className="w-full">
-                <button type="submit" className={`${outOn} w-full`}>
-                  退勤
-                </button>
+                <FormPendingSubmit className={`${outOn} w-full`} label="退勤" />
               </form>
               <form action={cancelClockOutAction} className="w-full">
-                <button
-                  type="submit"
+                <FormPendingSubmit
                   className="w-full rounded-xl border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-600 dark:border-neutral-600 dark:text-neutral-400"
-                >
-                  退勤のみ取り消す
-                </button>
+                  label="退勤のみ取り消す"
+                  pendingLabel="取り消し中…"
+                />
               </form>
             </div>
           </>
