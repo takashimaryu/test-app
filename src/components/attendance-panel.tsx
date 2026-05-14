@@ -70,9 +70,12 @@ function applyJustStamped(
     return today;
   }
   if (flash.kind === "in") {
-    /** 行が取れていれば DB を正とする（`?ts=` が古い・欠損・重複で誤表示になるのを防ぐ） */
+    /** 再出勤直後は DB 読み取りが古いことがあるので、リダイレクトの ts を出勤表示に優先する */
     if (today) {
-      return today;
+      return {
+        ...today,
+        clock_in_at: justIso,
+      };
     }
     return {
       work_date: jstCalendarDateIso(),
@@ -111,9 +114,9 @@ export function AttendancePanel({
     justStampedIso && (flash?.kind === "in" || flash?.kind === "out")
       ? applyJustStamped(today, flash, justStampedIso)
       : today;
-  /** 出勤取り消し・まとめ取り消し直後は SSR が一瞬古いことがあるので、フラッシュ中は行を出さない（退勤取り消し後の「—」表示と揃える） */
+  /** 取り消し直後かつ行がまだ取れないときだけプレースホルダーにし、再出勤後に行があればそのまま表示する */
   const showRow =
-    flash?.kind === "undo_in" || flash?.kind === "clear_day" ? null : rowFromDb;
+    (flash?.kind === "undo_in" || flash?.kind === "clear_day") && !today ? null : rowFromDb;
   const isWorking = Boolean(showRow && !showRow.clock_out_at);
 
   const primaryBtn =

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const TZ = "Asia/Tokyo";
 
 /**
- * 出退勤カード用：日本時間の「今日の日付」と現在時刻（秒なし）を横並び。分の切り替え用に 1 秒ごとに更新。
+ * 出退勤カード用：日本時間の「今日の日付」と現在時刻（時・分のみ）を横並び。分が変わるタイミングで合わせるため 1 秒ごとに更新。
  */
 export function AttendanceJstClock() {
   const [now, setNow] = useState(() => new Date());
