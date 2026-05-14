@@ -47,7 +47,7 @@ export function AttendanceTimesTapEdit({
   if (editing) {
     return (
       <div className="space-y-3 rounded-xl border border-neutral-200 bg-white px-3 py-3 dark:border-neutral-600 dark:bg-neutral-950">
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
           当日分は日付を固定し、日本時間の時刻だけ変えられます。退勤を空にすると未退勤に戻ります。Esc
           で閉じます。
         </p>
@@ -55,7 +55,7 @@ export function AttendanceTimesTapEdit({
           <div>
             <label
               htmlFor="att-clock-in"
-              className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400"
+              className="mb-1 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
             >
               出勤
             </label>
@@ -66,13 +66,13 @@ export function AttendanceTimesTapEdit({
               required
               step={60}
               defaultValue={isoToJstTimeHm(clockInAt)}
-              className="w-full max-w-[12rem] rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+              className="w-full max-w-[12rem] rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-base text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
             />
           </div>
           <div>
             <label
               htmlFor="att-clock-out"
-              className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400"
+              className="mb-1 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
             >
               退勤
             </label>
@@ -82,18 +82,18 @@ export function AttendanceTimesTapEdit({
               type="time"
               step={60}
               defaultValue={clockOutAt ? isoToJstTimeHm(clockOutAt) : ""}
-              className="w-full max-w-[12rem] rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+              className="w-full max-w-[12rem] rounded-lg border border-neutral-300 bg-neutral-50 px-3 py-2.5 text-base text-neutral-900 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
             />
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <FormPendingSubmit
-              className="flex-1 rounded-xl border border-neutral-300 bg-neutral-900 py-2.5 text-sm font-semibold text-white shadow-sm active:scale-[0.99] dark:border-neutral-600 dark:bg-white dark:text-neutral-950"
+              className="flex-1 rounded-xl border border-neutral-300 bg-neutral-900 py-3 text-base font-semibold text-white shadow-sm active:scale-[0.99] dark:border-neutral-600 dark:bg-white dark:text-neutral-950"
               label="保存"
             />
             <button
               type="button"
               onClick={closeEdit}
-              className="flex-1 rounded-xl border border-neutral-300 bg-white py-2.5 text-sm font-semibold text-neutral-900 active:scale-[0.99] dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+              className="flex-1 rounded-xl border border-neutral-300 bg-white py-3 text-base font-semibold text-neutral-900 active:scale-[0.99] dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
             >
               キャンセル
             </button>
@@ -129,7 +129,7 @@ export function AttendanceTimesTapEdit({
           </button>
         </div>
       </div>
-      <p className="text-center text-xs text-neutral-500 dark:text-neutral-400">
+      <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
         時刻をタップして変更
       </p>
     </div>

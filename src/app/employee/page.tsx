@@ -6,6 +6,11 @@ import { DailyReportPanel, type DailyReportInitial } from "@/components/daily-re
 import { SignOutButton } from "@/components/sign-out-button";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { normalizeWorkTypesFromDb } from "@/lib/attendance/work-types";
+import {
+  DAILY_REPORT_PHOTO_MAX_COUNT,
+  normalizePhotoPathsFromDb,
+  signedDailyReportPhotoUrls,
+} from "@/lib/daily-report/photos";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type Search = {
@@ -93,11 +98,22 @@ function parseReportBanner(q: Search): ReportBanner {
     }
     if (code === "work_type_required") {
       return {
-        err: "作業内容を1つ以上選ぶか、「取り消し」で選択を外してから保存してください。",
+        err: "作業内容を1つ以上選ぶか、写真を追加するか、「取り消し」ですべて空にしてから保存してください。",
       };
     }
     if (code === "bad_work_other") {
       return { err: "「その他」を選んだときは、内容の入力が必要です。" };
+    }
+    if (code === "too_many_photos") {
+      return {
+        err: `写真は合わせて最大${DAILY_REPORT_PHOTO_MAX_COUNT}枚までです（1枚あたり最大5MB、JPEG / PNG / WebP）。`,
+      };
+    }
+    if (code === "photo_too_large") {
+      return { err: "写真のサイズが大きすぎます。1枚あたり5MB以下にしてください。" };
+    }
+    if (code === "bad_photo_type") {
+      return { err: "使える写真の形式は JPEG・PNG・WebP です。" };
     }
     return { err: `日報を保存できませんでした（${code}）。` };
   }
@@ -139,7 +155,7 @@ export default async function EmployeePage({
 
   const { data: reportRow, error: reportErr } = await supabase
     .from("daily_report")
-    .select("id, work_types, work_other, distance_km, toll_yen, notes, updated_at")
+    .select("id, work_types, work_other, distance_km, toll_yen, notes, photo_paths, updated_at")
     .eq("user_id", user.id)
     .eq("work_date", workDate)
     .maybeSingle();
@@ -166,6 +182,7 @@ export default async function EmployeePage({
     distanceKm: "",
     tollYen: "",
     notes: "",
+    photos: [],
   };
 
   const formatKmForInput = (v: unknown): string => {
@@ -181,6 +198,13 @@ export default async function EmployeePage({
     return "";
   };
 
+  const photoPathsKey = !reportErr
+    ? normalizePhotoPathsFromDb(reportRow?.photo_paths)
+        .slice()
+        .sort()
+        .join("|")
+    : "";
+
   const reportInitial: DailyReportInitial = reportErr
     ? emptyReport
     : {
@@ -192,17 +216,21 @@ export default async function EmployeePage({
             ? String(reportRow.toll_yen as number)
             : "",
         notes: (reportRow?.notes as string) ?? "",
+        photos: await signedDailyReportPhotoUrls(
+          supabase,
+          normalizePhotoPathsFromDb(reportRow?.photo_paths),
+        ),
       };
 
   const reportTypesKey = [...reportInitial.workTypes].sort().join(",");
 
   const reportPanelKey = reportErr
     ? "report-disabled"
-    : `${reportRow?.id ?? "none"}-${reportTypesKey}-${(reportRow?.updated_at as string) ?? ""}`;
+    : `${reportRow?.id ?? "none"}-${reportTypesKey}-${photoPathsKey}-${(reportRow?.updated_at as string) ?? ""}`;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-5 py-10">
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         <header className="space-y-2">
           <p className="text-sm text-neutral-500 dark:text-neutral-400">マイページ</p>
           <h1 className="text-3xl font-semibold leading-tight">ようこそ</h1>
@@ -272,6 +300,10 @@ export default async function EmployeePage({
             と{" "}
             <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
               supabase/migrations/20260215210000_daily_report_work_types_array.sql
+            </code>{" "}
+            と{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
+              supabase/migrations/20260216120000_daily_report_photos.sql
             </code>{" "}
             も順に実行してください。
           </p>

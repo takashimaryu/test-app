@@ -123,7 +123,7 @@ export function AttendancePanel({
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div>
-        <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">
+        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
           今日の出退勤
         </h2>
         <AttendanceJstClock />
@@ -196,7 +196,7 @@ export function AttendancePanel({
               </form>
               <form action={cancelClockOutAction} className="w-full">
                 <FormPendingSubmit
-                  className="w-full rounded-xl border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-600 dark:border-neutral-600 dark:text-neutral-400"
+                  className="w-full rounded-xl border border-dashed border-neutral-300 py-2.5 text-sm font-medium text-neutral-600 dark:border-neutral-600 dark:text-neutral-400"
                   label="退勤のみ取り消す"
                   pendingLabel="取り消し中…"
                 />

@@ -7,6 +7,10 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /*
+     * `/_next/` 配下（CSS・JS・RSC の data など）は必ず素通し。
+     * `_next/data` だけ除外漏れすると、環境によってはフライトやスタイルが壊れ「CSS 無しの HTML」に見える。
+     */
+    "/((?!_next/|_next$).*)",
   ],
 };

@@ -32,7 +32,7 @@ export function AttendanceJstClock() {
 
   return (
     <div className="mt-2 flex flex-row flex-wrap items-baseline gap-2 sm:gap-3">
-      <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">{dateStr}</p>
+      <p className="text-base font-medium text-neutral-800 dark:text-neutral-200">{dateStr}</p>
       <p className="text-2xl font-semibold tabular-nums tracking-wide text-neutral-900 dark:text-neutral-50">
         {timeStr}
       </p>
