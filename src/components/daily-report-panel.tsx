@@ -90,6 +90,7 @@ export function DailyReportPanel({
   const [draftToll, setDraftToll] = useState(initial.tollYen);
   const [draftNotes, setDraftNotes] = useState(initial.notes);
   const [isPending, startTransition] = useTransition();
+  const [isResetPending, startResetTransition] = useTransition();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
 
@@ -229,6 +230,13 @@ export function DailyReportPanel({
     }
     startTransition(() => {
       void saveDailyReportAction(fd);
+    });
+  };
+
+  const handleResetClick = () => {
+    startResetTransition(async () => {
+      await new Promise((r) => setTimeout(r, 120));
+      clearEntireReportForm();
     });
   };
 
@@ -543,7 +551,7 @@ export function DailyReportPanel({
 
           <button
             type="submit"
-            disabled={disabled || isPending}
+            disabled={disabled || isPending || isResetPending}
             className="w-full rounded-2xl border border-neutral-300 bg-neutral-900 px-4 py-3.5 text-base font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-white dark:text-neutral-950"
             aria-busy={isPending}
           >
@@ -553,11 +561,12 @@ export function DailyReportPanel({
           <div className="flex flex-col items-stretch gap-1.5 border-t border-neutral-200 pt-3 dark:border-neutral-700">
             <button
               type="button"
-              disabled={disabled}
-              onClick={clearEntireReportForm}
+              disabled={disabled || isPending || isResetPending}
+              onClick={handleResetClick}
               className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+              aria-busy={isResetPending}
             >
-              リセット
+              {isResetPending ? "実行中" : "リセット"}
             </button>
             <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
               取り消しと同じく、入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）
