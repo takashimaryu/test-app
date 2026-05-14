@@ -247,7 +247,7 @@ export function DailyReportPanel({
       <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
-          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">今日の日報</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">日報</h2>
           {!disabled && !expanded && (
             <>
               <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
@@ -338,18 +338,18 @@ export function DailyReportPanel({
               ))}
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="rep-other-dd" className={legendClass}>
-                その他
-              </label>
+            <div>
               <select
                 id="rep-other-dd"
+                aria-label="その他の区分"
                 disabled={disabled}
                 value={otherPick}
                 onChange={(e) => setOtherPick(e.target.value)}
-                className={field}
+                className={`${btnBase} w-full cursor-pointer px-3 outline-none ring-offset-2 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:ring-offset-neutral-900 ${
+                  otherPick ? `${btnOn} focus-visible:ring-sky-300` : `${btnOff} focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500`
+                }`}
               >
-                <option value="">選択してください</option>
+                <option value="">その他</option>
                 {WORK_OTHER_GROUP.map((opt) => (
                   <option key={opt} value={opt}>
                     {opt === "その他" ? "その他（自由入力）" : opt}
