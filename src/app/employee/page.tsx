@@ -8,10 +8,17 @@ import { SignOutButton } from "@/components/sign-out-button";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-type Search = { a?: string; c?: string; ts?: string };
+type Search = { a?: string | string[]; c?: string | string[]; ts?: string | string[] };
+
+function firstParam(v: string | string[] | undefined): string | undefined {
+  if (v === undefined) {
+    return undefined;
+  }
+  return typeof v === "string" ? v : v[0];
+}
 
 function parseStampedIso(q: Search): string | null {
-  const raw = q.ts;
+  const raw = firstParam(q.ts);
   if (!raw || typeof raw !== "string") {
     return null;
   }
@@ -32,26 +39,28 @@ function parseStampedIso(q: Search): string | null {
 }
 
 function parseFlash(sp: Search) {
-  if (sp.a === "in") {
+  const a = firstParam(sp.a);
+  if (a === "in") {
     return { kind: "in" as const };
   }
-  if (sp.a === "out") {
+  if (a === "out") {
     return { kind: "out" as const };
   }
-  if (sp.a === "undo_in") {
+  if (a === "undo_in") {
     return { kind: "undo_in" as const };
   }
-  if (sp.a === "undo_out") {
+  if (a === "undo_out") {
     return { kind: "undo_out" as const };
   }
-  if (sp.a === "clear_day") {
+  if (a === "clear_day") {
     return { kind: "clear_day" as const };
   }
-  if (sp.a === "edit") {
+  if (a === "edit") {
     return { kind: "edit" as const };
   }
-  if (sp.a === "err" && sp.c) {
-    return { kind: "err" as const, code: sp.c };
+  const c = firstParam(sp.c);
+  if (a === "err" && c) {
+    return { kind: "err" as const, code: c };
   }
   return null;
 }

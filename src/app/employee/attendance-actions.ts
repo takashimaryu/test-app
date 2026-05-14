@@ -41,11 +41,15 @@ export async function clockInAction() {
   }
 
   const clockInAt = new Date().toISOString();
-  const { error: insErr } = await supabase.from("daily_attendance").insert({
-    user_id: user.id,
-    work_date: workDate,
-    clock_in_at: clockInAt,
-  });
+  const { data: inserted, error: insErr } = await supabase
+    .from("daily_attendance")
+    .insert({
+      user_id: user.id,
+      work_date: workDate,
+      clock_in_at: clockInAt,
+    })
+    .select("clock_in_at")
+    .single();
 
   if (insErr) {
     if (insErr.code === "23505") {
@@ -54,8 +58,11 @@ export async function clockInAction() {
     redirectErr("db");
   }
 
+  const persistedIn = inserted?.clock_in_at as string | undefined;
   revalidatePath("/employee", "page");
-  redirect(`/employee?a=in&ts=${encodeURIComponent(clockInAt)}`);
+  redirect(
+    `/employee?a=in&ts=${encodeURIComponent(persistedIn ?? clockInAt)}`,
+  );
 }
 
 export async function clockOutAction() {
@@ -96,14 +103,17 @@ export async function clockOutAction() {
   if (!row.clock_out_at) {
     upd = upd.is("clock_out_at", null);
   }
-  const { error: updErr } = await upd;
+  const { data: updated, error: updErr } = await upd.select("clock_out_at").single();
 
   if (updErr) {
     redirectErr("db");
   }
 
+  const persistedOut = updated?.clock_out_at as string | undefined;
   revalidatePath("/employee", "page");
-  redirect(`/employee?a=out&ts=${encodeURIComponent(clockOutAt)}`);
+  redirect(
+    `/employee?a=out&ts=${encodeURIComponent(persistedOut ?? clockOutAt)}`,
+  );
 }
 
 /** 今日の行があれば削除（未退勤なら出勤のみ取り消し、退勤済みなら出退勤まとめて消す）。 */

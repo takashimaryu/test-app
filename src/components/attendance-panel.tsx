@@ -69,20 +69,22 @@ function applyJustStamped(
     return today;
   }
   if (flash.kind === "in") {
-    if (!today) {
-      return {
-        work_date: jstCalendarDateIso(),
-        clock_in_at: justIso,
-        clock_out_at: null,
-      };
+    /** 行が取れていれば DB を正とする（`?ts=` が古い・欠損・重複で誤表示になるのを防ぐ） */
+    if (today) {
+      return today;
     }
     return {
-      ...today,
+      work_date: jstCalendarDateIso(),
       clock_in_at: justIso,
+      clock_out_at: null,
     };
   }
   if (flash.kind === "out") {
     if (!today) {
+      return today;
+    }
+    /** 退勤は PostgREST の読み取りが一瞬遅れることがあるので、未反映のときだけ URL を当てる */
+    if (today.clock_out_at) {
       return today;
     }
     return {
