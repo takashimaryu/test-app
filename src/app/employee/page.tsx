@@ -2,11 +2,18 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { AttendancePanel } from "@/components/attendance-panel";
+import { DailyReportPanel } from "@/components/daily-report-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-type Search = { a?: string | string[]; c?: string | string[]; ts?: string | string[] };
+type Search = {
+  a?: string | string[];
+  c?: string | string[];
+  ts?: string | string[];
+  rep?: string | string[];
+  rc?: string | string[];
+};
 
 function firstParam(v: string | string[] | undefined): string | undefined {
   if (v === undefined) {
@@ -63,10 +70,29 @@ function parseFlash(sp: Search) {
   return null;
 }
 
+type ReportBanner = "ok" | { err: string } | null;
+
+function parseReportBanner(q: Search): ReportBanner {
+  const rep = firstParam(q.rep);
+  if (rep === "1") {
+    return "ok";
+  }
+  if (rep === "err") {
+    const code = firstParam(q.rc) ?? "unknown";
+    if (code === "db") {
+      return {
+        err: "日報の保存に失敗しました。Supabase で SQL（daily_report）を実行したか確認してください。",
+      };
+    }
+    return { err: `日報を保存できませんでした（${code}）。` };
+  }
+  return null;
+}
+
 export const dynamic = "force-dynamic";
 
 /**
- * ログイン後の「従業員マイページ」— 出退勤（JST 1 日 1往復）を記録。
+ * ログイン後の「従業員マイページ」— 出退勤と今日の日報（JST 暦日）。
  */
 export default async function EmployeePage({
   searchParams,
@@ -86,11 +112,19 @@ export default async function EmployeePage({
   const q = await searchParams;
   const flash = parseFlash(q);
   const justStampedIso = parseStampedIso(q);
+  const reportBanner = parseReportBanner(q);
 
   const workDate = jstCalendarDateIso();
   const { data: todayRow, error: attErr } = await supabase
     .from("daily_attendance")
     .select("work_date, clock_in_at, clock_out_at")
+    .eq("user_id", user.id)
+    .eq("work_date", workDate)
+    .maybeSingle();
+
+  const { data: reportRow, error: reportErr } = await supabase
+    .from("daily_report")
+    .select("id, body, updated_at")
     .eq("user_id", user.id)
     .eq("work_date", workDate)
     .maybeSingle();
@@ -110,6 +144,11 @@ export default async function EmployeePage({
           clock_in_at: todayRow.clock_in_at as string,
           clock_out_at: (todayRow.clock_out_at as string | null) ?? null,
         };
+
+  const reportInitialBody = reportErr || !reportRow ? "" : (reportRow.body as string);
+  const reportPanelKey = reportErr
+    ? "report-disabled"
+    : `${reportRow?.id ?? "none"}-${(reportRow?.updated_at as string) ?? ""}`;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
@@ -144,6 +183,43 @@ export default async function EmployeePage({
           today={today}
           flash={flash}
           justStampedIso={justStampedIso}
+        />
+
+        {reportBanner === "ok" ? (
+          <p
+            className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-50"
+            role="status"
+          >
+            日報を保存しました。
+          </p>
+        ) : null}
+        {reportBanner && reportBanner !== "ok" ? (
+          <p
+            className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-50"
+            role="alert"
+          >
+            {reportBanner.err}
+          </p>
+        ) : null}
+
+        {reportErr ? (
+          <p
+            className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-50"
+            role="alert"
+          >
+            日報データを読めませんでした。Supabase の SQL Editor で{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
+              supabase/migrations/20260215120000_daily_report.sql
+            </code>{" "}
+            を実行し、テーブル <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">daily_report</code>{" "}
+            を作成してください。
+          </p>
+        ) : null}
+
+        <DailyReportPanel
+          key={reportPanelKey}
+          initialBody={reportInitialBody}
+          disabled={Boolean(reportErr)}
         />
 
         <SignOutButton />

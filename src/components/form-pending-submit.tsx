@@ -9,14 +9,18 @@ export function FormPendingSubmit({
   className,
   label,
   pendingLabel = "処理中…",
+  disabled = false,
 }: {
   className: string;
   label: string;
   pendingLabel?: string;
+  /** フォーム全体を無効化（例: バックエンド未準備） */
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
+  const off = pending || disabled;
   return (
-    <button type="submit" disabled={pending} className={className} aria-busy={pending}>
+    <button type="submit" disabled={off} className={className} aria-busy={pending}>
       {pending ? pendingLabel : label}
     </button>
   );

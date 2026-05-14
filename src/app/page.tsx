@@ -100,11 +100,17 @@ export default async function Home() {
               </span>
               出退勤（打刻・JST 1 日 1 往復）
             </li>
+            <li className="flex items-center gap-2">
+              <span className="text-lg" aria-hidden>
+                ✅
+              </span>
+              日報（マイページで今日分を入力・保存）
+            </li>
             <li className="flex items-center gap-2 text-neutral-400 dark:text-neutral-500">
               <span className="text-lg" aria-hidden>
                 ⏳
               </span>
-              日報・管理画面
+              管理画面
             </li>
           </ol>
         </section>
