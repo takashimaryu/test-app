@@ -292,12 +292,13 @@ export function DailyReportPanel({
         {!disabled ? (
           <button
             type="button"
-            className={toggleBtn}
+            className={`${toggleBtn} min-w-[2.75rem] text-lg leading-none tabular-nums`}
             aria-expanded={expanded}
             aria-controls="daily-report-panel-body"
+            aria-label={expanded ? "日報を閉じる" : "日報を開く"}
             onClick={() => setExpanded((v) => !v)}
           >
-            {expanded ? "閉じる" : "開く"}
+            <span aria-hidden="true">{expanded ? "△" : "▽"}</span>
           </button>
         ) : null}
       </div>
@@ -308,7 +309,7 @@ export function DailyReportPanel({
         className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-700"
       >
         <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-          「取り消し」または「リセット」でフォームをすべて空にし、そのまま保存すると、この日の日報を削除します。
+          「リセット」でフォームをすべて空にし、そのまま保存すると、この日の日報を削除します。
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
@@ -357,18 +358,6 @@ export function DailyReportPanel({
                 ))}
               </select>
             </div>
-
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              <button
-                type="button"
-                disabled={disabled}
-                className="font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950 dark:text-neutral-200 dark:hover:text-white"
-                onClick={clearEntireReportForm}
-              >
-                取り消し
-              </button>
-              <span className="ml-2">（作業・写真・距離・料金・連絡をすべて空にする）</span>
-            </p>
           </fieldset>
 
           <div className={showOther ? "space-y-1.5" : "hidden"}>
@@ -569,7 +558,7 @@ export function DailyReportPanel({
               {isResetPending ? "実行中" : "リセット"}
             </button>
             <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-              取り消しと同じく、入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）
+              入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）
             </p>
           </div>
         </form>
