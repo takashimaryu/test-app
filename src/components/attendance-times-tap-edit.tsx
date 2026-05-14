@@ -5,12 +5,13 @@ import { updateTodayAttendanceTimesAction } from "@/app/employee/attendance-acti
 import { FormPendingSubmit } from "@/components/form-pending-submit";
 import { isoToJstTimeHm } from "@/lib/time/jst";
 
-/** 出退勤の打刻表示（日本時間・時分のみ） */
+/** 出退勤の打刻表示（日本時間）。同一分の再打刻も区別できるよう秒を含める */
 function formatJstTime(iso: string): string {
   return new Intl.DateTimeFormat("ja-JP", {
     timeZone: "Asia/Tokyo",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
     hourCycle: "h23",
   }).format(new Date(iso));
 }

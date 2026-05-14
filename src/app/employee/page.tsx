@@ -17,6 +17,8 @@ type Search = {
   a?: string | string[];
   c?: string | string[];
   ts?: string | string[];
+  /** 打刻のエポック ms（`ts` の解釈に失敗しても表示を合わせる用） */
+  ms?: string | string[];
   rep?: string | string[];
   rc?: string | string[];
 };
@@ -29,6 +31,15 @@ function firstParam(v: string | string[] | undefined): string | undefined {
 }
 
 function parseStampedIso(q: Search): string | null {
+  const rawMs = firstParam(q.ms);
+  if (typeof rawMs === "string" && /^\d+$/.test(rawMs.trim())) {
+    const n = Number(rawMs.trim());
+    const d = new Date(n);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  }
+
   const raw = firstParam(q.ts);
   if (!raw || typeof raw !== "string") {
     return null;
@@ -39,14 +50,18 @@ function parseStampedIso(q: Search): string | null {
   } catch {
     return null;
   }
+  s = s.trim();
+  if (/^\d{4}-\d{2}-\d{2} /.test(s)) {
+    s = `${s.slice(0, 10)}T${s.slice(11)}`;
+  }
   if (!/^\d{4}-\d{2}-\d{2}T/u.test(s)) {
     return null;
   }
-  const ms = Date.parse(s);
-  if (Number.isNaN(ms)) {
+  const parsed = Date.parse(s);
+  if (Number.isNaN(parsed)) {
     return null;
   }
-  return new Date(ms).toISOString();
+  return new Date(parsed).toISOString();
 }
 
 function parseFlash(sp: Search) {
@@ -228,6 +243,7 @@ export default async function EmployeePage({
             today?.clock_in_at ?? "",
             today?.clock_out_at ?? "",
             justStampedIso ?? "",
+            firstParam(q.ms) ?? "",
           ].join("|")}
           today={today}
           flash={flash}

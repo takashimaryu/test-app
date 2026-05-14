@@ -59,9 +59,12 @@ export async function clockInAction() {
   }
 
   const persistedIn = inserted?.clock_in_at as string | undefined;
+  const stamp = persistedIn ?? clockInAt;
+  const epochMs = Date.parse(stamp);
+  const safeMs = Number.isFinite(epochMs) ? epochMs : Date.now();
   revalidatePath("/employee", "page");
   redirect(
-    `/employee?a=in&ts=${encodeURIComponent(persistedIn ?? clockInAt)}`,
+    `/employee?a=in&ts=${encodeURIComponent(stamp)}&ms=${String(safeMs)}`,
   );
 }
 
@@ -110,9 +113,12 @@ export async function clockOutAction() {
   }
 
   const persistedOut = updated?.clock_out_at as string | undefined;
+  const stamp = persistedOut ?? clockOutAt;
+  const epochMs = Date.parse(stamp);
+  const safeMs = Number.isFinite(epochMs) ? epochMs : Date.now();
   revalidatePath("/employee", "page");
   redirect(
-    `/employee?a=out&ts=${encodeURIComponent(persistedOut ?? clockOutAt)}`,
+    `/employee?a=out&ts=${encodeURIComponent(stamp)}&ms=${String(safeMs)}`,
   );
 }
 
