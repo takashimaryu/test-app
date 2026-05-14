@@ -113,12 +113,12 @@ export function AttendancePanel({
       : today;
   const isWorking = Boolean(showRow && !showRow.clock_out_at);
 
-  const inOn =
-    "flex min-h-14 w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 text-lg font-semibold text-white shadow-sm active:scale-[0.99] dark:bg-white dark:text-neutral-950";
-  const outOn =
-    "flex min-h-14 w-full items-center justify-center rounded-2xl border border-neutral-300 bg-white px-4 text-lg font-semibold text-neutral-900 shadow-sm active:scale-[0.99] dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50";
-  const outOff =
-    "flex min-h-14 w-full cursor-not-allowed items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-100 px-4 text-lg font-semibold text-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500";
+  const primaryBtn =
+    "flex min-h-14 w-full touch-manipulation items-center justify-center rounded-2xl bg-neutral-900 px-4 text-lg font-semibold text-white shadow-sm active:scale-[0.99] dark:bg-white dark:text-neutral-950";
+  const doneBtn =
+    "flex min-h-14 w-full cursor-not-allowed items-center justify-center rounded-2xl border border-neutral-200 bg-neutral-100 px-4 text-lg font-semibold text-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400";
+  const subtleLinkForm =
+    "flex w-full justify-center rounded-lg py-2 text-sm font-medium text-neutral-600 underline underline-offset-2 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100";
 
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
@@ -127,6 +127,9 @@ export function AttendancePanel({
           今日の出退勤
         </h2>
         <AttendanceJstClock />
+        <p className="mt-1 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+          打刻は日本時間で日付が変わると（午前0時頃）最初からやり直せます。出勤のあと退勤まで、時刻はタップで修正できます。
+        </p>
       </div>
 
       {msg ? (
@@ -146,6 +149,7 @@ export function AttendancePanel({
         <AttendanceTimesTapEdit
           clockInAt={showRow.clock_in_at}
           clockOutAt={showRow.clock_out_at}
+          timesLocked={Boolean(showRow.clock_out_at)}
         />
       ) : (
         <div className="grid grid-cols-2 gap-3 text-neutral-950 dark:text-neutral-50 sm:gap-6">
@@ -164,44 +168,43 @@ export function AttendancePanel({
         </div>
       )}
 
-      <div className="flex flex-row gap-3">
+      <div className="space-y-2">
         {!showRow ? (
-          <>
-            <form action={clockInAction} className="flex-1">
-              <FormPendingSubmit className={inOn} label="出勤" />
-            </form>
-            <div className="flex-1">
-              <button type="button" disabled className={outOff}>
-                退勤
-              </button>
-            </div>
-          </>
+          <form action={clockInAction} className="w-full">
+            <FormPendingSubmit className={primaryBtn} label="出勤" pendingLabel="記録中…" />
+          </form>
         ) : isWorking ? (
           <>
-            <form action={removeTodayAttendanceAction} className="flex-1">
-              <FormPendingSubmit className={inOn} label="出勤" pendingLabel="取り消し中…" />
+            <form action={clockOutAction} className="w-full">
+              <FormPendingSubmit className={primaryBtn} label="退勤" pendingLabel="記録中…" />
             </form>
-            <form action={clockOutAction} className="flex-1">
-              <FormPendingSubmit className={outOn} label="退勤" />
+            <form action={removeTodayAttendanceAction} className="w-full">
+              <FormPendingSubmit
+                className={subtleLinkForm}
+                label="出勤を取り消す"
+                pendingLabel="取り消し中…"
+              />
             </form>
           </>
         ) : (
           <>
-            <form action={removeTodayAttendanceAction} className="flex-1">
-              <FormPendingSubmit className={inOn} label="出勤" pendingLabel="取り消し中…" />
+            <button type="button" disabled className={doneBtn} aria-disabled>
+              本日は記録済み
+            </button>
+            <form action={cancelClockOutAction} className="w-full">
+              <FormPendingSubmit
+                className={subtleLinkForm}
+                label="退勤のみ取り消す"
+                pendingLabel="取り消し中…"
+              />
             </form>
-            <div className="flex flex-1 flex-col gap-2">
-              <form action={clockOutAction} className="w-full">
-                <FormPendingSubmit className={`${outOn} w-full`} label="退勤" />
-              </form>
-              <form action={cancelClockOutAction} className="w-full">
-                <FormPendingSubmit
-                  className="w-full rounded-xl border border-dashed border-neutral-300 py-2.5 text-sm font-medium text-neutral-600 dark:border-neutral-600 dark:text-neutral-400"
-                  label="退勤のみ取り消す"
-                  pendingLabel="取り消し中…"
-                />
-              </form>
-            </div>
+            <form action={removeTodayAttendanceAction} className="w-full">
+              <FormPendingSubmit
+                className={`${subtleLinkForm} text-neutral-500 dark:text-neutral-500`}
+                label="出退勤をまとめて取り消す"
+                pendingLabel="取り消し中…"
+              />
+            </form>
           </>
         )}
       </div>

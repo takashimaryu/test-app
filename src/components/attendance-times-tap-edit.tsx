@@ -22,9 +22,12 @@ const timeTap =
 export function AttendanceTimesTapEdit({
   clockInAt,
   clockOutAt,
+  timesLocked = false,
 }: {
   clockInAt: string;
   clockOutAt: string | null;
+  /** 退勤済みのとき true。時刻のタップ編集を無効にする */
+  timesLocked?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
 
@@ -43,6 +46,36 @@ export function AttendanceTimesTapEdit({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [editing]);
+
+  useEffect(() => {
+    if (timesLocked) {
+      setEditing(false);
+    }
+  }, [timesLocked]);
+
+  if (timesLocked) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3 text-neutral-950 dark:text-neutral-50 sm:gap-6">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">出勤</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums tracking-wide text-neutral-900 dark:text-neutral-50">
+              {formatJstTime(clockInAt)}
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-neutral-950 dark:text-neutral-50">退勤</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums tracking-wide text-neutral-900 dark:text-neutral-50">
+              {clockOutAt ? formatJstTime(clockOutAt) : "—"}
+            </p>
+          </div>
+        </div>
+        <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+          退勤後は時刻を変更できません
+        </p>
+      </div>
+    );
+  }
 
   if (editing) {
     return (
