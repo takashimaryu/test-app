@@ -308,10 +308,6 @@ export function DailyReportPanel({
         hidden={!bodyVisible}
         className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-700"
       >
-        <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-          「リセット」でフォームをすべて空にし、そのまま保存すると、この日の日報を削除します。
-        </p>
-
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
           {[...mainPicked].map((v) => (
             <input key={v} type="hidden" name="work_types" value={v} />
@@ -557,9 +553,10 @@ export function DailyReportPanel({
             >
               {isResetPending ? "実行中" : "リセット"}
             </button>
-            <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-              入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）
-            </p>
+            <div className="space-y-0.5 text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+              <p>入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）</p>
+              <p>入力をすべて空に戻します（保存で反映）</p>
+            </div>
           </div>
         </form>
       </div>
