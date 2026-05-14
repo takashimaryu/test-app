@@ -223,8 +223,9 @@ export default async function EmployeePage({
 
         <AttendancePanel
           key={[
-            today?.work_date,
-            today?.clock_in_at,
+            flash?.kind ?? "",
+            today?.work_date ?? "",
+            today?.clock_in_at ?? "",
             today?.clock_out_at ?? "",
             justStampedIso ?? "",
           ].join("|")}

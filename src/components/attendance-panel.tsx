@@ -106,11 +106,14 @@ export function AttendancePanel({
   justStampedIso: string | null;
 }) {
   const msg = flashText(flash);
-  /** DB の `today` を正とし、`?a=in|out` + `ts` だけ行がまだ取れない瞬間を補う（取り消しフラッシュで行を隠さない） */
-  const showRow =
+  /** DB の `today` を正とし、`?a=in|out` + `ts` で行がまだ取れない瞬間を補う */
+  const rowFromDb =
     justStampedIso && (flash?.kind === "in" || flash?.kind === "out")
       ? applyJustStamped(today, flash, justStampedIso)
       : today;
+  /** 出勤取り消し・まとめ取り消し直後は SSR が一瞬古いことがあるので、フラッシュ中は行を出さない（退勤取り消し後の「—」表示と揃える） */
+  const showRow =
+    flash?.kind === "undo_in" || flash?.kind === "clear_day" ? null : rowFromDb;
   const isWorking = Boolean(showRow && !showRow.clock_out_at);
 
   const primaryBtn =
