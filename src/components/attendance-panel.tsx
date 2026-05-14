@@ -163,7 +163,7 @@ export function AttendancePanel({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-row gap-3">
         {!showRow ? (
           <>
             <form action={clockInAction} className="flex-1">
