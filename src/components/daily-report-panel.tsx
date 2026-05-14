@@ -8,6 +8,7 @@ import {
   useTransition,
   type FormEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { saveDailyReportAction } from "@/app/employee/report-actions";
 import {
   DAILY_REPORT_PHOTO_ACCEPT,
@@ -88,6 +89,8 @@ export function DailyReportPanel({
   const [fileInputKey, setFileInputKey] = useState(0);
   const [fieldsKey, setFieldsKey] = useState(0);
   const [isPending, startTransition] = useTransition();
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
 
   const showOther = otherPick === "その他";
 
@@ -105,6 +108,28 @@ export function DailyReportPanel({
       setExpanded(true);
     }
   }, [disabled]);
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxUrl) {
+      return;
+    }
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setLightboxUrl(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [lightboxUrl]);
 
   useEffect(() => {
     if (!showOther) {
@@ -215,7 +240,8 @@ export function DailyReportPanel({
   const bodyVisible = expanded || disabled;
 
   return (
-    <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
+    <>
+      <section className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">今日の日報</h2>
@@ -224,28 +250,34 @@ export function DailyReportPanel({
               <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
                 {summaryWhenCollapsed}
               </p>
-          {!disabled && !expanded && (initial.photos.length > 0 || pendingPhotos.length > 0) ? (
+              {(initial.photos.length > 0 || pendingPhotos.length > 0) && (
                 <div className="flex gap-1.5 overflow-x-auto pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {initial.photos.map((p) => (
-                    <div
+                    <button
                       key={p.path}
-                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-800"
+                      type="button"
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-200 focus-visible:outline focus-visible:ring-2 focus-visible:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-800 dark:focus-visible:ring-neutral-500"
+                      onClick={() => setLightboxUrl(p.signedUrl)}
+                      aria-label="写真を拡大"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.signedUrl} alt="" className="size-full object-cover" />
-                    </div>
+                    </button>
                   ))}
                   {pendingPhotos.map((p) => (
-                    <div
+                    <button
                       key={p.id}
-                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 border-amber-400/90 bg-neutral-200 dark:bg-neutral-800"
+                      type="button"
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 border-amber-400/90 bg-neutral-200 focus-visible:outline focus-visible:ring-2 focus-visible:ring-amber-400 dark:bg-neutral-800"
+                      onClick={() => setLightboxUrl(p.url)}
+                      aria-label="未保存の写真を拡大"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={p.url} alt="" className="size-full object-cover" />
-                    </div>
+                    </button>
                   ))}
                 </div>
-              ) : null}
+              )}
               {pendingPhotos.length > 0 && (
                 <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
                   未保存の写真があります。開いて内容を確認してください。
@@ -275,20 +307,6 @@ export function DailyReportPanel({
         <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
           「取り消し」で作業内容・写真をすべて外し、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
         </p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={resetDraft}
-            className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
-          >
-            リセット
-          </button>
-          <span className="text-xs text-neutral-500 dark:text-neutral-400">
-            直前に保存した内容に戻す（この画面での未保存の変更を破棄）
-          </span>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
           {[...mainPicked].map((v) => (
@@ -447,13 +465,24 @@ export function DailyReportPanel({
                     key={p.path}
                     className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-800"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.signedUrl} alt="" className="size-full object-cover" />
                     <button
                       type="button"
                       disabled={disabled}
-                      onClick={() => removeExisting(p.path)}
-                      className="absolute right-1 top-1 rounded-lg bg-neutral-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-white/90 dark:text-neutral-950 sm:px-2 sm:py-1 sm:text-xs"
+                      className="absolute inset-0 z-0 flex items-stretch justify-stretch"
+                      onClick={() => setLightboxUrl(p.signedUrl)}
+                      aria-label="写真を拡大"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.signedUrl} alt="" className="size-full object-cover" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeExisting(p.path);
+                      }}
+                      className="absolute right-1 top-1 z-10 rounded-lg bg-neutral-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-white/90 dark:text-neutral-950 sm:px-2 sm:py-1 sm:text-xs"
                     >
                       削除
                     </button>
@@ -464,13 +493,24 @@ export function DailyReportPanel({
                     key={p.id}
                     className="relative aspect-square overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-800"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt="" className="size-full object-cover" />
                     <button
                       type="button"
                       disabled={disabled}
-                      onClick={() => removePending(p.id)}
-                      className="absolute right-1 top-1 rounded-lg bg-neutral-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-white/90 dark:text-neutral-950 sm:px-2 sm:py-1 sm:text-xs"
+                      className="absolute inset-0 z-0 flex items-stretch justify-stretch"
+                      onClick={() => setLightboxUrl(p.url)}
+                      aria-label="写真を拡大"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt="" className="size-full object-cover" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePending(p.id);
+                      }}
+                      className="absolute right-1 top-1 z-10 rounded-lg bg-neutral-950/80 px-1.5 py-0.5 text-[10px] font-medium text-white dark:bg-white/90 dark:text-neutral-950 sm:px-2 sm:py-1 sm:text-xs"
                     >
                       削除
                     </button>
@@ -511,8 +551,51 @@ export function DailyReportPanel({
           >
             {isPending ? "保存中…" : "日報を保存"}
           </button>
+
+          <div className="flex flex-col items-stretch gap-1.5 border-t border-neutral-200 pt-3 dark:border-neutral-700">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={resetDraft}
+              className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
+            >
+              リセット
+            </button>
+            <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+              直前に保存した内容に戻す（この画面での未保存の変更を破棄）
+            </p>
+          </div>
         </form>
       </div>
     </section>
+
+      {portalReady && lightboxUrl
+        ? createPortal(
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="写真プレビュー"
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
+              onClick={() => setLightboxUrl(null)}
+            >
+              <button
+                type="button"
+                className="absolute right-3 top-3 z-[1] rounded-xl border border-white/20 bg-neutral-950/90 px-3 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-sm dark:border-neutral-600 dark:bg-white/95 dark:text-neutral-950"
+                onClick={() => setLightboxUrl(null)}
+              >
+                閉じる
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={lightboxUrl}
+                alt=""
+                className="max-h-[85vh] max-w-[min(100%,96vw)] rounded-lg object-contain shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
