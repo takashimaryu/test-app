@@ -114,9 +114,9 @@ export function AttendancePanel({
     justStampedIso && (flash?.kind === "in" || flash?.kind === "out")
       ? applyJustStamped(today, flash, justStampedIso)
       : today;
-  /** 取り消し直後かつ行がまだ取れないときだけプレースホルダーにし、再出勤後に行があればそのまま表示する */
+  /** 取り消し直後は SSR がまだ行を返すことがあるため、フラッシュ中は常に未打刻表示（「—」）にする。再出勤は ?a=in ではないので影響しない */
   const showRow =
-    (flash?.kind === "undo_in" || flash?.kind === "clear_day") && !today ? null : rowFromDb;
+    flash?.kind === "undo_in" || flash?.kind === "clear_day" ? null : rowFromDb;
   const isWorking = Boolean(showRow && !showRow.clock_out_at);
 
   const primaryBtn =
