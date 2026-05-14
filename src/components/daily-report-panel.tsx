@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { saveDailyReportAction } from "@/app/employee/report-actions";
 import { FormPendingSubmit } from "@/components/form-pending-submit";
-import { WORK_MAIN_THREE, WORK_OTHER_DROPDOWN } from "@/lib/attendance/work-types";
+import { WORK_MAIN_THREE, WORK_OTHER_GROUP } from "@/lib/attendance/work-types";
 
 export type DailyReportInitial = {
-  workType: string;
+  workTypes: string[];
   workOther: string;
   distanceKm: string;
   tollYen: string;
@@ -18,12 +18,37 @@ const field =
 
 const legendClass = "mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
-const btnBase =
-  "min-h-11 flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-60";
-const btnOff =
-  "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50 dark:hover:border-neutral-500";
-const btnOn =
-  "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-950";
+const checkLabel =
+  "flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50 dark:has-[:focus-visible]:ring-neutral-500";
+
+function WorkCheck({
+  value,
+  label,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  value: string;
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onToggle: (v: string) => void;
+}) {
+  return (
+    <label className={checkLabel}>
+      <input
+        type="checkbox"
+        name="work_types"
+        value={value}
+        checked={checked}
+        disabled={disabled}
+        onChange={() => onToggle(value)}
+        className="size-4 shrink-0 rounded border-neutral-300 accent-neutral-900 dark:accent-white"
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
 
 export function DailyReportPanel({
   initial,
@@ -32,74 +57,85 @@ export function DailyReportPanel({
   initial: DailyReportInitial;
   disabled?: boolean;
 }) {
-  const [workType, setWorkType] = useState(initial.workType);
+  const [picked, setPicked] = useState(() => new Set(initial.workTypes));
+  const [otherText, setOtherText] = useState(initial.workOther);
 
-  const selectValue = useMemo(() => {
-    return (WORK_OTHER_DROPDOWN as readonly string[]).includes(workType) ? workType : "";
-  }, [workType]);
+  const hasSonota = picked.has("その他");
 
-  const showOther = workType === "その他";
+  useEffect(() => {
+    if (!hasSonota) {
+      setOtherText("");
+    }
+  }, [hasSonota]);
+
+  const toggle = (v: string) => {
+    setPicked((prev) => {
+      const n = new Set(prev);
+      if (n.has(v)) {
+        n.delete(v);
+      } else {
+        n.add(v);
+      }
+      return n;
+    });
+  };
+
+  const clearAll = () => {
+    setPicked(new Set());
+    setOtherText("");
+  };
+
+  const showOther = picked.has("その他");
 
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div>
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">今日の日報</h2>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          作業内容が「記録しない」で、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
+          「取り消し」で作業内容のチェックをすべて外し、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
         </p>
       </div>
       <form action={saveDailyReportAction} className="space-y-4">
-        <input type="hidden" name="work_type" value={workType} />
-
         <fieldset className="min-w-0 space-y-3 border-0 p-0">
-          <legend className={legendClass}>作業内容</legend>
+          <legend className={legendClass}>作業内容（複数選択可）</legend>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {WORK_MAIN_THREE.map((opt) => (
-              <button
+              <WorkCheck
                 key={opt}
-                type="button"
+                value={opt}
+                label={opt}
+                checked={picked.has(opt)}
                 disabled={disabled}
-                onClick={() => setWorkType(opt)}
-                className={`${btnBase} ${workType === opt ? btnOn : btnOff}`}
-              >
-                {opt}
-              </button>
+                onToggle={toggle}
+              />
             ))}
           </div>
 
-          <div className="space-y-1.5">
-            <label htmlFor="rep-other-select" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
-              その他
-            </label>
-            <select
-              id="rep-other-select"
-              disabled={disabled}
-              value={selectValue}
-              onChange={(e) => {
-                const v = e.target.value;
-                setWorkType(v === "" ? "" : v);
-              }}
-              className={field}
-            >
-              <option value="">選択してください</option>
-              {WORK_OTHER_DROPDOWN.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt === "その他" ? "その他（自由入力）" : opt}
-                </option>
-              ))}
-            </select>
+          <p className={legendClass}>その他</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {WORK_OTHER_GROUP.map((opt) => (
+              <WorkCheck
+                key={opt}
+                value={opt}
+                label={opt === "その他" ? "その他（自由入力）" : opt}
+                checked={picked.has(opt)}
+                disabled={disabled}
+                onToggle={toggle}
+              />
+            ))}
           </div>
 
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
             <button
               type="button"
               disabled={disabled}
-              className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
-              onClick={() => setWorkType("")}
+              className="font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950 dark:text-neutral-200 dark:hover:text-white"
+              onClick={clearAll}
             >
-              記録しない
+              取り消し
             </button>
+            <span className="ml-2">（作業内容の選択をすべて外す）</span>
           </p>
         </fieldset>
 
@@ -112,7 +148,8 @@ export function DailyReportPanel({
             name="work_other"
             rows={3}
             disabled={disabled || !showOther}
-            defaultValue={initial.workOther}
+            value={otherText}
+            onChange={(e) => setOtherText(e.target.value)}
             maxLength={4000}
             placeholder="作業の具体的な内容"
             className={`${field} resize-y`}
