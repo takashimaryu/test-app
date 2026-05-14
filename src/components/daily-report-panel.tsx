@@ -386,9 +386,6 @@ export function DailyReportPanel({
               </span>
               <span className="text-rose-600 dark:text-rose-400">※必須</span>
             </legend>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              最低1枚は添付してください。JPEG / PNG / WebP、1枚あたり{DAILY_REPORT_PHOTO_MAX_BYTES / (1024 * 1024)}MB まで。
-            </p>
 
             {(visibleExisting.length > 0 || pendingPhotos.length > 0) && (
               <ul className="grid grid-cols-4 gap-2">
