@@ -5,10 +5,40 @@ import { redirect } from "next/navigation";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-const MAX_BODY = 8000;
+const MAX_TEXT = 4000;
 
 function redirectReportErr(code: string): never {
   redirect(`/employee?rep=err&rc=${encodeURIComponent(code)}`);
+}
+
+function parseOptionalKm(raw: FormDataEntryValue | null): number | null | "bad" {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const t = raw.trim().replace(",", ".");
+  if (t === "") {
+    return null;
+  }
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0 || n > 99_999) {
+    return "bad";
+  }
+  return Math.round(n * 100) / 100;
+}
+
+function parseOptionalYen(raw: FormDataEntryValue | null): number | null | "bad" {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const t = raw.trim().replace(/,/g, "");
+  if (t === "") {
+    return null;
+  }
+  const n = parseInt(t, 10);
+  if (Number.isNaN(n) || n < 0 || n > 99_999_999) {
+    return "bad";
+  }
+  return n;
 }
 
 export async function saveDailyReportAction(formData: FormData) {
@@ -21,10 +51,24 @@ export async function saveDailyReportAction(formData: FormData) {
   }
 
   const workDate = jstCalendarDateIso();
-  const raw = formData.get("body");
-  const text = typeof raw === "string" ? raw.trim() : "";
+  const workRaw = formData.get("work_content");
+  const notesRaw = formData.get("notes");
+  const workContent =
+    typeof workRaw === "string" ? workRaw.trim().slice(0, MAX_TEXT) : "";
+  const notes = typeof notesRaw === "string" ? notesRaw.trim().slice(0, MAX_TEXT) : "";
 
-  if (text === "") {
+  const km = parseOptionalKm(formData.get("distance_km"));
+  if (km === "bad") {
+    redirectReportErr("bad_distance");
+  }
+  const yen = parseOptionalYen(formData.get("toll_yen"));
+  if (yen === "bad") {
+    redirectReportErr("bad_toll");
+  }
+
+  const allEmpty = workContent === "" && notes === "" && km === null && yen === null;
+
+  if (allEmpty) {
     const { error: delErr } = await supabase
       .from("daily_report")
       .delete()
@@ -35,13 +79,15 @@ export async function saveDailyReportAction(formData: FormData) {
       redirectReportErr("db");
     }
   } else {
-    const body = text.slice(0, MAX_BODY);
     const now = new Date().toISOString();
     const { error: upErr } = await supabase.from("daily_report").upsert(
       {
         user_id: user.id,
         work_date: workDate,
-        body,
+        work_content: workContent,
+        distance_km: km,
+        toll_yen: yen,
+        notes,
         updated_at: now,
       },
       { onConflict: "user_id,work_date" },

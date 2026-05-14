@@ -2,7 +2,7 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { AttendancePanel } from "@/components/attendance-panel";
-import { DailyReportPanel } from "@/components/daily-report-panel";
+import { DailyReportPanel, type DailyReportInitial } from "@/components/daily-report-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -81,8 +81,14 @@ function parseReportBanner(q: Search): ReportBanner {
     const code = firstParam(q.rc) ?? "unknown";
     if (code === "db") {
       return {
-        err: "日報の保存に失敗しました。Supabase で SQL（daily_report）を実行したか確認してください。",
+        err: "日報の保存に失敗しました。Supabase のマイグレーション（daily_report）を最新まで実行したか確認してください。",
       };
+    }
+    if (code === "bad_distance") {
+      return { err: "移動距離は 0〜99999 の数値（km）で入力してください。" };
+    }
+    if (code === "bad_toll") {
+      return { err: "高速料金は 0〜99999999 の整数（円）で入力してください。" };
     }
     return { err: `日報を保存できませんでした（${code}）。` };
   }
@@ -124,7 +130,7 @@ export default async function EmployeePage({
 
   const { data: reportRow, error: reportErr } = await supabase
     .from("daily_report")
-    .select("id, body, updated_at")
+    .select("id, work_content, distance_km, toll_yen, notes, updated_at")
     .eq("user_id", user.id)
     .eq("work_date", workDate)
     .maybeSingle();
@@ -145,7 +151,38 @@ export default async function EmployeePage({
           clock_out_at: (todayRow.clock_out_at as string | null) ?? null,
         };
 
-  const reportInitialBody = reportErr || !reportRow ? "" : (reportRow.body as string);
+  const emptyReport: DailyReportInitial = {
+    workContent: "",
+    distanceKm: "",
+    tollYen: "",
+    notes: "",
+  };
+
+  const formatKmForInput = (v: unknown): string => {
+    if (v === null || v === undefined) {
+      return "";
+    }
+    if (typeof v === "number") {
+      return String(v);
+    }
+    if (typeof v === "string") {
+      return v;
+    }
+    return "";
+  };
+
+  const reportInitial: DailyReportInitial = reportErr
+    ? emptyReport
+    : {
+        workContent: (reportRow?.work_content as string) ?? "",
+        distanceKm: formatKmForInput(reportRow?.distance_km),
+        tollYen:
+          reportRow?.toll_yen !== null && reportRow?.toll_yen !== undefined
+            ? String(reportRow.toll_yen as number)
+            : "",
+        notes: (reportRow?.notes as string) ?? "",
+      };
+
   const reportPanelKey = reportErr
     ? "report-disabled"
     : `${reportRow?.id ?? "none"}-${(reportRow?.updated_at as string) ?? ""}`;
@@ -211,14 +248,17 @@ export default async function EmployeePage({
             <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
               supabase/migrations/20260215120000_daily_report.sql
             </code>{" "}
-            を実行し、テーブル <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">daily_report</code>{" "}
-            を作成してください。
+            を実行してください。すでに旧版を入れている場合は続けて{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
+              supabase/migrations/20260215180000_daily_report_structured.sql
+            </code>{" "}
+            も実行してください。
           </p>
         ) : null}
 
         <DailyReportPanel
           key={reportPanelKey}
-          initialBody={reportInitialBody}
+          initial={reportInitial}
           disabled={Boolean(reportErr)}
         />
 
