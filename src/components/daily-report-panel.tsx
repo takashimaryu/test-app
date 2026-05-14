@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { saveDailyReportAction } from "@/app/employee/report-actions";
 import { FormPendingSubmit } from "@/components/form-pending-submit";
-import { WORK_TYPE_CHOICES } from "@/lib/attendance/work-types";
+import { WORK_MAIN_THREE, WORK_OTHER_DROPDOWN } from "@/lib/attendance/work-types";
 
 export type DailyReportInitial = {
   workType: string;
@@ -18,33 +18,12 @@ const field =
 
 const legendClass = "mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
-function RadioChoice({
-  value,
-  label,
-  defaultChecked,
-  disabled,
-}: {
-  value: string;
-  label: string;
-  defaultChecked: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <label className="block cursor-pointer rounded-xl has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-400 dark:has-[:focus-visible]:ring-neutral-500">
-      <input
-        type="radio"
-        name="work_type"
-        value={value}
-        defaultChecked={defaultChecked}
-        disabled={disabled}
-        className="peer sr-only"
-      />
-      <span className="flex min-h-10 items-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-900 peer-checked:border-neutral-900 peer-checked:bg-neutral-900 peer-checked:text-white dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50 dark:peer-checked:border-white dark:peer-checked:bg-white dark:peer-checked:text-neutral-950">
-        {label}
-      </span>
-    </label>
-  );
-}
+const btnBase =
+  "min-h-11 flex-1 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-60";
+const btnOff =
+  "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50 dark:hover:border-neutral-500";
+const btnOn =
+  "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-950";
 
 export function DailyReportPanel({
   initial,
@@ -53,50 +32,80 @@ export function DailyReportPanel({
   initial: DailyReportInitial;
   disabled?: boolean;
 }) {
-  const [showOther, setShowOther] = useState(initial.workType === "その他");
+  const [workType, setWorkType] = useState(initial.workType);
+
+  const selectValue = useMemo(() => {
+    return (WORK_OTHER_DROPDOWN as readonly string[]).includes(workType) ? workType : "";
+  }, [workType]);
+
+  const showOther = workType === "その他";
 
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div>
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">今日の日報</h2>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          作業内容で「記録しない」を選び、距離・料金・連絡もすべて空にして保存すると、この日の日報を削除します。
+          作業内容が「記録しない」で、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
         </p>
       </div>
-      <form
-        action={saveDailyReportAction}
-        className="space-y-4"
-        onChange={(e) => {
-          const t = e.target as HTMLElement;
-          if (t instanceof HTMLInputElement && t.name === "work_type") {
-            setShowOther(t.value === "その他");
-          }
-        }}
-      >
-        <fieldset className="min-w-0 space-y-2 border-0 p-0">
-          <legend className={legendClass}>作業内容（タップで選択）</legend>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            <RadioChoice
-              value=""
-              label="記録しない"
-              defaultChecked={initial.workType === ""}
-              disabled={disabled}
-            />
-            {WORK_TYPE_CHOICES.map((opt) => (
-              <RadioChoice
+      <form action={saveDailyReportAction} className="space-y-4">
+        <input type="hidden" name="work_type" value={workType} />
+
+        <fieldset className="min-w-0 space-y-3 border-0 p-0">
+          <legend className={legendClass}>作業内容</legend>
+
+          <div className="flex flex-wrap gap-2">
+            {WORK_MAIN_THREE.map((opt) => (
+              <button
                 key={opt}
-                value={opt}
-                label={opt}
-                defaultChecked={initial.workType === opt}
+                type="button"
                 disabled={disabled}
-              />
+                onClick={() => setWorkType(opt)}
+                className={`${btnBase} ${workType === opt ? btnOn : btnOff}`}
+              >
+                {opt}
+              </button>
             ))}
           </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="rep-other-select" className="block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              その他
+            </label>
+            <select
+              id="rep-other-select"
+              disabled={disabled}
+              value={selectValue}
+              onChange={(e) => {
+                const v = e.target.value;
+                setWorkType(v === "" ? "" : v);
+              }}
+              className={field}
+            >
+              <option value="">選択してください</option>
+              {WORK_OTHER_DROPDOWN.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === "その他" ? "その他（自由入力）" : opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+            <button
+              type="button"
+              disabled={disabled}
+              className="underline underline-offset-2 hover:text-neutral-800 dark:hover:text-neutral-200"
+              onClick={() => setWorkType("")}
+            >
+              記録しない
+            </button>
+          </p>
         </fieldset>
 
         <div className={showOther ? "space-y-1.5" : "hidden"}>
           <label htmlFor="rep-work-other" className="mb-1.5 block text-xs font-medium text-neutral-600 dark:text-neutral-400">
-            その他（内容を入力）
+            その他の内容
           </label>
           <textarea
             id="rep-work-other"
