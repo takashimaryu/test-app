@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -87,7 +86,9 @@ export function DailyReportPanel({
   const [removedPaths, setRemovedPaths] = useState<Set<string>>(() => new Set());
   const [pendingPhotos, setPendingPhotos] = useState<PendingPhoto[]>([]);
   const [fileInputKey, setFileInputKey] = useState(0);
-  const [fieldsKey, setFieldsKey] = useState(0);
+  const [draftKm, setDraftKm] = useState(initial.distanceKm);
+  const [draftToll, setDraftToll] = useState(initial.tollYen);
+  const [draftNotes, setDraftNotes] = useState(initial.notes);
   const [isPending, startTransition] = useTransition();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
@@ -102,6 +103,12 @@ export function DailyReportPanel({
     () => collapsedSummaryLine(initial, pendingPhotos.length),
     [initial, pendingPhotos.length],
   );
+
+  useEffect(() => {
+    setDraftKm(initial.distanceKm);
+    setDraftToll(initial.tollYen);
+    setDraftNotes(initial.notes);
+  }, [initial.distanceKm, initial.tollYen, initial.notes]);
 
   useEffect(() => {
     if (disabled) {
@@ -137,19 +144,20 @@ export function DailyReportPanel({
     }
   }, [showOther]);
 
-  const resetDraft = useCallback(() => {
-    const split = splitWorkTypesUiState(initial.workTypes);
-    setMainPicked(new Set(split.main));
-    setOtherPick(split.otherSelect);
-    setOtherText(initial.workOther);
-    setRemovedPaths(new Set());
+  const clearEntireReportForm = () => {
+    setMainPicked(new Set());
+    setOtherPick("");
+    setOtherText("");
+    setRemovedPaths(new Set(initial.photos.map((p) => p.path)));
     setPendingPhotos((prev) => {
       prev.forEach((p) => URL.revokeObjectURL(p.url));
       return [];
     });
+    setDraftKm("");
+    setDraftToll("");
+    setDraftNotes("");
     setFileInputKey((k) => k + 1);
-    setFieldsKey((k) => k + 1);
-  }, [initial]);
+  };
 
   const toggleMain = (opt: string) => {
     setMainPicked((prev) => {
@@ -161,19 +169,6 @@ export function DailyReportPanel({
       }
       return n;
     });
-  };
-
-  const clearAll = () => {
-    setMainPicked(new Set());
-    setOtherPick("");
-    setOtherText("");
-    setRemovedPaths(new Set(initial.photos.map((p) => p.path)));
-    setPendingPhotos((prev) => {
-      prev.forEach((p) => URL.revokeObjectURL(p.url));
-      return [];
-    });
-    setFileInputKey((k) => k + 1);
-    setFieldsKey((k) => k + 1);
   };
 
   const removeExisting = (path: string) => {
@@ -305,7 +300,7 @@ export function DailyReportPanel({
         className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-700"
       >
         <p className="text-sm leading-relaxed text-neutral-500 dark:text-neutral-400">
-          「取り消し」で作業内容・写真をすべて外し、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
+          「取り消し」または「リセット」でフォームをすべて空にし、そのまま保存すると、この日の日報を削除します。
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
@@ -360,11 +355,11 @@ export function DailyReportPanel({
                 type="button"
                 disabled={disabled}
                 className="font-medium text-neutral-800 underline underline-offset-2 hover:text-neutral-950 dark:text-neutral-200 dark:hover:text-white"
-                onClick={clearAll}
+                onClick={clearEntireReportForm}
               >
                 取り消し
               </button>
-              <span className="ml-2">（作業内容・写真の選択をすべて外す）</span>
+              <span className="ml-2">（作業・写真・距離・料金・連絡をすべて空にする）</span>
             </p>
           </fieldset>
 
@@ -388,7 +383,7 @@ export function DailyReportPanel({
             />
           </div>
 
-          <div key={fieldsKey} className="space-y-4">
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label
@@ -403,7 +398,8 @@ export function DailyReportPanel({
                   type="text"
                   inputMode="decimal"
                   disabled={disabled}
-                  defaultValue={initial.distanceKm}
+                  value={draftKm}
+                  onChange={(e) => setDraftKm(e.target.value)}
                   placeholder="例: 42.5"
                   autoComplete="off"
                   className={field}
@@ -422,7 +418,8 @@ export function DailyReportPanel({
                   type="text"
                   inputMode="numeric"
                   disabled={disabled}
-                  defaultValue={initial.tollYen}
+                  value={draftToll}
+                  onChange={(e) => setDraftToll(e.target.value)}
                   placeholder="例: 1200"
                   autoComplete="off"
                   className={field}
@@ -442,7 +439,8 @@ export function DailyReportPanel({
                 name="notes"
                 rows={3}
                 disabled={disabled}
-                defaultValue={initial.notes}
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
                 maxLength={4000}
                 placeholder="連絡・依頼・特記事項など"
                 className={`${field} resize-y`}
@@ -556,13 +554,13 @@ export function DailyReportPanel({
             <button
               type="button"
               disabled={disabled}
-              onClick={resetDraft}
+              onClick={clearEntireReportForm}
               className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
             >
               リセット
             </button>
             <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-              直前に保存した内容に戻す（この画面での未保存の変更を破棄）
+              取り消しと同じく、入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）
             </p>
           </div>
         </form>
