@@ -105,13 +105,11 @@ export function AttendancePanel({
   justStampedIso: string | null;
 }) {
   const msg = flashText(flash);
-  /** 行削除直後に RSC が古い today を返すことがあるので、成功フラッシュでは表示だけ空に合わせる */
-  const cleared = flash?.kind === "undo_in" || flash?.kind === "clear_day";
-  const stamped =
-    !cleared && justStampedIso && (flash?.kind === "in" || flash?.kind === "out")
+  /** DB の `today` を正とし、`?a=in|out` + `ts` だけ行がまだ取れない瞬間を補う（取り消しフラッシュで行を隠さない） */
+  const showRow =
+    justStampedIso && (flash?.kind === "in" || flash?.kind === "out")
       ? applyJustStamped(today, flash, justStampedIso)
       : today;
-  const showRow = cleared ? null : stamped;
   const isWorking = Boolean(showRow && !showRow.clock_out_at);
 
   const inOn =
