@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { saveDailyReportAction } from "@/app/employee/report-actions";
 import { FormPendingSubmit } from "@/components/form-pending-submit";
-import { WORK_MAIN_THREE, WORK_OTHER_GROUP } from "@/lib/attendance/work-types";
+import {
+  WORK_MAIN_THREE,
+  WORK_OTHER_GROUP,
+  splitWorkTypesUiState,
+} from "@/lib/attendance/work-types";
 
 export type DailyReportInitial = {
   workTypes: string[];
@@ -18,37 +22,12 @@ const field =
 
 const legendClass = "mb-2 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
-const checkLabel =
-  "flex cursor-pointer items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-neutral-400 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-50 dark:has-[:focus-visible]:ring-neutral-500";
-
-function WorkCheck({
-  value,
-  label,
-  checked,
-  disabled,
-  onToggle,
-}: {
-  value: string;
-  label: string;
-  checked: boolean;
-  disabled?: boolean;
-  onToggle: (v: string) => void;
-}) {
-  return (
-    <label className={checkLabel}>
-      <input
-        type="checkbox"
-        name="work_types"
-        value={value}
-        checked={checked}
-        disabled={disabled}
-        onChange={() => onToggle(value)}
-        className="size-4 shrink-0 rounded border-neutral-300 accent-neutral-900 dark:accent-white"
-      />
-      <span>{label}</span>
-    </label>
-  );
-}
+const btnBase =
+  "min-h-12 rounded-xl border px-2 py-2.5 text-sm font-semibold transition-[color,background-color,border-color,box-shadow] disabled:opacity-60 sm:px-3";
+const btnOff =
+  "border-neutral-200 bg-white text-neutral-800 shadow-sm hover:border-neutral-300 hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-950 dark:text-neutral-100 dark:hover:border-neutral-500 dark:hover:bg-neutral-900";
+const btnOn =
+  "border-sky-600 bg-sky-600 text-white shadow-md ring-2 ring-sky-600/30 ring-offset-2 ring-offset-neutral-50 dark:border-sky-500 dark:bg-sky-600 dark:ring-sky-400/35 dark:ring-offset-neutral-900";
 
 export function DailyReportPanel({
   initial,
@@ -57,73 +36,87 @@ export function DailyReportPanel({
   initial: DailyReportInitial;
   disabled?: boolean;
 }) {
-  const [picked, setPicked] = useState(() => new Set(initial.workTypes));
+  const { main: initialMain, otherSelect: initialOther } = splitWorkTypesUiState(initial.workTypes);
+  const [mainPicked, setMainPicked] = useState(() => initialMain);
+  const [otherPick, setOtherPick] = useState(initialOther);
   const [otherText, setOtherText] = useState(initial.workOther);
 
-  const hasSonota = picked.has("その他");
+  const showOther = otherPick === "その他";
 
   useEffect(() => {
-    if (!hasSonota) {
+    if (!showOther) {
       setOtherText("");
     }
-  }, [hasSonota]);
+  }, [showOther]);
 
-  const toggle = (v: string) => {
-    setPicked((prev) => {
+  const toggleMain = (opt: string) => {
+    setMainPicked((prev) => {
       const n = new Set(prev);
-      if (n.has(v)) {
-        n.delete(v);
+      if (n.has(opt)) {
+        n.delete(opt);
       } else {
-        n.add(v);
+        n.add(opt);
       }
       return n;
     });
   };
 
   const clearAll = () => {
-    setPicked(new Set());
+    setMainPicked(new Set());
+    setOtherPick("");
     setOtherText("");
   };
-
-  const showOther = picked.has("その他");
 
   return (
     <section className="space-y-4 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-5 dark:border-neutral-700 dark:bg-neutral-900">
       <div>
         <h2 className="text-base font-semibold text-neutral-900 dark:text-neutral-50">今日の日報</h2>
         <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-          「取り消し」で作業内容のチェックをすべて外し、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
+          「取り消し」で作業内容をすべて外し、距離・料金・連絡もすべて空のまま保存すると、この日の日報を削除します。
         </p>
       </div>
       <form action={saveDailyReportAction} className="space-y-4">
+        {[...mainPicked].map((v) => (
+          <input key={v} type="hidden" name="work_types" value={v} />
+        ))}
+        {otherPick ? <input type="hidden" name="work_types" value={otherPick} /> : null}
+
         <fieldset className="min-w-0 space-y-3 border-0 p-0">
           <legend className={legendClass}>作業内容（複数選択可）</legend>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2">
             {WORK_MAIN_THREE.map((opt) => (
-              <WorkCheck
+              <button
                 key={opt}
-                value={opt}
-                label={opt}
-                checked={picked.has(opt)}
+                type="button"
                 disabled={disabled}
-                onToggle={toggle}
-              />
+                aria-pressed={mainPicked.has(opt)}
+                onClick={() => toggleMain(opt)}
+                className={`${btnBase} ${mainPicked.has(opt) ? btnOn : btnOff}`}
+              >
+                {opt}
+              </button>
             ))}
           </div>
 
-          <p className={legendClass}>その他</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {WORK_OTHER_GROUP.map((opt) => (
-              <WorkCheck
-                key={opt}
-                value={opt}
-                label={opt === "その他" ? "その他（自由入力）" : opt}
-                checked={picked.has(opt)}
-                disabled={disabled}
-                onToggle={toggle}
-              />
-            ))}
+          <div className="space-y-1.5">
+            <label htmlFor="rep-other-dd" className={legendClass}>
+              その他
+            </label>
+            <select
+              id="rep-other-dd"
+              disabled={disabled}
+              value={otherPick}
+              onChange={(e) => setOtherPick(e.target.value)}
+              className={field}
+            >
+              <option value="">選択してください</option>
+              {WORK_OTHER_GROUP.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt === "その他" ? "その他（自由入力）" : opt}
+                </option>
+              ))}
+            </select>
           </div>
 
           <p className="text-xs text-neutral-500 dark:text-neutral-400">

@@ -24,3 +24,23 @@ export function normalizeWorkTypesFromDb(v: unknown): string[] {
   }
   return [];
 }
+
+/** 画面用：メイン3種のトグルと「その他」プルダウン1つに分割（プルダウンは最大1件） */
+export function splitWorkTypesUiState(workTypes: string[]): {
+  main: Set<string>;
+  otherSelect: string;
+} {
+  const main = new Set<string>();
+  let otherSelect = "";
+  const mains = WORK_MAIN_THREE as readonly string[];
+  const others = WORK_OTHER_GROUP as readonly string[];
+  for (const t of workTypes) {
+    if (mains.includes(t)) {
+      main.add(t);
+    }
+    if (others.includes(t)) {
+      otherSelect = t;
+    }
+  }
+  return { main, otherSelect };
+}
