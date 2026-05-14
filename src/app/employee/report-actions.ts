@@ -18,9 +18,7 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const MAX_TEXT = 4000;
 
-function redirectReportErr(code: string): never {
-  redirect(`/employee?rep=err&rc=${encodeURIComponent(code)}`);
-}
+export type SaveDailyReportResult = { ok: true } | { ok: false; code: string };
 
 function parseOptionalKm(raw: FormDataEntryValue | null): number | null | "bad" {
   if (typeof raw !== "string") {
@@ -102,7 +100,10 @@ function parseNewPhotoFiles(formData: FormData): File[] {
   return out;
 }
 
-export async function saveDailyReportAction(formData: FormData) {
+/**
+ * 日報を保存（自動保存用）。成功時もリダイレクトしない。クライアントで router.refresh() すること。
+ */
+export async function saveDailyReport(formData: FormData): Promise<SaveDailyReportResult> {
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -123,11 +124,11 @@ export async function saveDailyReportAction(formData: FormData) {
 
   const km = parseOptionalKm(formData.get("distance_km"));
   if (km === "bad") {
-    redirectReportErr("bad_distance");
+    return { ok: false, code: "bad_distance" };
   }
   const yen = parseOptionalYen(formData.get("toll_yen"));
   if (yen === "bad") {
-    redirectReportErr("bad_toll");
+    return { ok: false, code: "bad_toll" };
   }
 
   const { data: existingRow } = await supabase
@@ -144,15 +145,15 @@ export async function saveDailyReportAction(formData: FormData) {
   const newFiles = parseNewPhotoFiles(formData);
 
   if (keptPaths.length + newFiles.length > DAILY_REPORT_PHOTO_MAX_COUNT) {
-    redirectReportErr("too_many_photos");
+    return { ok: false, code: "too_many_photos" };
   }
 
   for (const f of newFiles) {
     if (f.size > DAILY_REPORT_PHOTO_MAX_BYTES) {
-      redirectReportErr("photo_too_large");
+      return { ok: false, code: "photo_too_large" };
     }
     if (!extFromImageMime(f.type)) {
-      redirectReportErr("bad_photo_type");
+      return { ok: false, code: "bad_photo_type" };
     }
   }
 
@@ -171,17 +172,17 @@ export async function saveDailyReportAction(formData: FormData) {
       .eq("work_date", workDate);
 
     if (delErr) {
-      redirectReportErr("db");
+      return { ok: false, code: "db" };
     }
   } else {
     if (workTypes.length === 0) {
-      redirectReportErr("work_type_required");
+      return { ok: false, code: "work_type_required" };
     }
     if (!hasPhotos) {
-      redirectReportErr("photo_required");
+      return { ok: false, code: "photo_required" };
     }
     if (workTypes.includes("その他") && workOther === "") {
-      redirectReportErr("bad_work_other");
+      return { ok: false, code: "bad_work_other" };
     }
 
     const prefix = photoObjectPrefix(user.id, workDate);
@@ -206,7 +207,7 @@ export async function saveDailyReportAction(formData: FormData) {
       if (uploadedPaths.length > 0) {
         await supabase.storage.from(DAILY_REPORT_PHOTO_BUCKET).remove(uploadedPaths);
       }
-      redirectReportErr("db");
+      return { ok: false, code: "db" };
     }
 
     const finalPaths = [...keptPaths, ...uploadedPaths];
@@ -235,10 +236,10 @@ export async function saveDailyReportAction(formData: FormData) {
       if (uploadedPaths.length > 0) {
         await supabase.storage.from(DAILY_REPORT_PHOTO_BUCKET).remove(uploadedPaths);
       }
-      redirectReportErr("db");
+      return { ok: false, code: "db" };
     }
   }
 
   revalidatePath("/employee", "page");
-  redirect("/employee?rep=1");
+  return { ok: true };
 }

@@ -3,12 +3,14 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
-  type FormEvent,
 } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { saveDailyReportAction } from "@/app/employee/report-actions";
+import { saveDailyReport } from "@/app/employee/report-actions";
+import { reportSaveErrorMessage } from "@/lib/daily-report/report-save-errors";
 import {
   DAILY_REPORT_PHOTO_ACCEPT,
   DAILY_REPORT_PHOTO_MAX_BYTES,
@@ -89,7 +91,10 @@ export function DailyReportPanel({
   const [draftKm, setDraftKm] = useState(initial.distanceKm);
   const [draftToll, setDraftToll] = useState(initial.tollYen);
   const [draftNotes, setDraftNotes] = useState(initial.notes);
-  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
+  const touchedRef = useRef(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [isResetPending, startResetTransition] = useTransition();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
@@ -161,6 +166,7 @@ export function DailyReportPanel({
   };
 
   const toggleMain = (opt: string) => {
+    touchedRef.current = true;
     setMainPicked((prev) => {
       const n = new Set(prev);
       if (n.has(opt)) {
@@ -173,10 +179,12 @@ export function DailyReportPanel({
   };
 
   const removeExisting = (path: string) => {
+    touchedRef.current = true;
     setRemovedPaths((prev) => new Set(prev).add(path));
   };
 
   const removePending = (id: string) => {
+    touchedRef.current = true;
     setPendingPhotos((prev) => {
       const t = prev.find((x) => x.id === id);
       if (t) {
@@ -216,27 +224,168 @@ export function DailyReportPanel({
       left--;
     }
     if (added.length) {
+      touchedRef.current = true;
       setPendingPhotos((prev) => [...prev, ...added]);
     }
     e.target.value = "";
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const fd = new FormData(form);
+  function workTypesForSave(): string[] {
+    const w = [...mainPicked];
+    if (otherPick) {
+      w.push(otherPick);
+    }
+    return w;
+  }
+
+  function hasPhotosForSave(): boolean {
+    return (
+      initial.photos.some((p) => !removedPaths.has(p.path)) || pendingPhotos.length > 0
+    );
+  }
+
+  function shouldAutoSave(): boolean {
+    const wt = workTypesForSave();
+    const hasPhotos = hasPhotosForSave();
+    const allEmpty =
+      wt.length === 0 &&
+      !hasPhotos &&
+      draftNotes.trim() === "" &&
+      draftKm.trim() === "" &&
+      draftToll.trim() === "" &&
+      (!showOther || otherText.trim() === "");
+    if (allEmpty) {
+      return true;
+    }
+    const complete =
+      wt.length > 0 &&
+      hasPhotos &&
+      (!wt.includes("その他") || otherText.trim() !== "");
+    return complete;
+  }
+
+  function buildFormData(): FormData {
+    const fd = new FormData();
+    for (const v of mainPicked) {
+      fd.append("work_types", v);
+    }
+    if (otherPick) {
+      fd.append("work_types", otherPick);
+    }
+    for (const p of initial.photos) {
+      if (!removedPaths.has(p.path)) {
+        fd.append("keep_photo", p.path);
+      }
+    }
+    fd.set("work_other", showOther ? otherText : "");
+    fd.set("distance_km", draftKm);
+    fd.set("toll_yen", draftToll);
+    fd.set("notes", draftNotes);
     for (const p of pendingPhotos) {
       fd.append("photos", p.file);
     }
-    startTransition(() => {
-      void saveDailyReportAction(fd);
-    });
-  };
+    return fd;
+  }
+
+  useEffect(() => {
+    if (disabled || !touchedRef.current) {
+      return;
+    }
+    if (!shouldAutoSave()) {
+      return;
+    }
+
+    let cancelled = false;
+    const idleHolder: { id?: number } = {};
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        if (cancelled) {
+          return;
+        }
+        setSaveStatus("saving");
+        setSaveError(null);
+        const fd = buildFormData();
+        try {
+          const r = await saveDailyReport(fd);
+          if (cancelled) {
+            return;
+          }
+          if (r.ok) {
+            setPendingPhotos((prev) => {
+              prev.forEach((p) => URL.revokeObjectURL(p.url));
+              return [];
+            });
+            setRemovedPaths(new Set());
+            setSaveError(null);
+            touchedRef.current = false;
+            router.refresh();
+            setSaveStatus("saved");
+            idleHolder.id = window.setTimeout(() => {
+              if (!cancelled) {
+                setSaveStatus("idle");
+              }
+            }, 2000);
+          } else {
+            setSaveError(reportSaveErrorMessage(r.code));
+            setSaveStatus("idle");
+          }
+        } catch {
+          if (!cancelled) {
+            setSaveError("日報の保存に失敗しました。通信環境を確認してください。");
+            setSaveStatus("idle");
+          }
+        }
+      })();
+    }, 120);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      if (idleHolder.id !== undefined) {
+        window.clearTimeout(idleHolder.id);
+      }
+    };
+  }, [
+    disabled,
+    mainPicked,
+    otherPick,
+    otherText,
+    draftKm,
+    draftToll,
+    draftNotes,
+    removedPaths,
+    pendingPhotos,
+    initial.photos,
+    showOther,
+    router,
+  ]);
 
   const handleResetClick = () => {
     startResetTransition(async () => {
       await new Promise((r) => setTimeout(r, 120));
-      clearEntireReportForm();
+      setSaveStatus("saving");
+      setSaveError(null);
+      const fd = new FormData();
+      fd.set("work_other", "");
+      fd.set("distance_km", "");
+      fd.set("toll_yen", "");
+      fd.set("notes", "");
+      try {
+        const r = await saveDailyReport(fd);
+        if (r.ok) {
+          clearEntireReportForm();
+          touchedRef.current = false;
+          router.refresh();
+          setSaveStatus("idle");
+          setSaveError(null);
+        } else {
+          setSaveError(reportSaveErrorMessage(r.code));
+          setSaveStatus("idle");
+        }
+      } catch {
+        setSaveError("日報の保存に失敗しました。通信環境を確認してください。");
+        setSaveStatus("idle");
+      }
     });
   };
 
@@ -308,14 +457,24 @@ export function DailyReportPanel({
         hidden={!bodyVisible}
         className="space-y-4 border-t border-neutral-200 pt-4 dark:border-neutral-700"
       >
-        <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
-          {[...mainPicked].map((v) => (
-            <input key={v} type="hidden" name="work_types" value={v} />
-          ))}
-          {otherPick ? <input type="hidden" name="work_types" value={otherPick} /> : null}
-          {visibleExisting.map((p) => (
-            <input key={p.path} type="hidden" name="keep_photo" value={p.path} readOnly />
-          ))}
+        <form
+          className="space-y-4"
+          encType="multipart/form-data"
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <div className="min-h-[2.5rem] space-y-1" aria-live="polite">
+            {saveError ? (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{saveError}</p>
+            ) : null}
+            {saveStatus === "saving" ? (
+              <p className="text-xs text-neutral-500 dark:text-neutral-400">保存中…</p>
+            ) : null}
+            {saveStatus === "saved" ? (
+              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">保存済み</p>
+            ) : null}
+          </div>
 
           <fieldset className="min-w-0 space-y-3 border-0 p-0">
             <legend className={legendClass}>
@@ -344,7 +503,10 @@ export function DailyReportPanel({
                 aria-label="その他の区分"
                 disabled={disabled}
                 value={otherPick}
-                onChange={(e) => setOtherPick(e.target.value)}
+                onChange={(e) => {
+                  touchedRef.current = true;
+                  setOtherPick(e.target.value);
+                }}
                 className={`${btnBase} w-full cursor-pointer px-3 outline-none ring-offset-2 focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:ring-offset-neutral-900 ${
                   otherPick ? `${btnOn} focus-visible:ring-sky-300` : `${btnOff} focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500`
                 }`}
@@ -372,7 +534,10 @@ export function DailyReportPanel({
               rows={3}
               disabled={disabled || !showOther}
               value={otherText}
-              onChange={(e) => setOtherText(e.target.value)}
+              onChange={(e) => {
+                touchedRef.current = true;
+                setOtherText(e.target.value);
+              }}
               maxLength={4000}
               placeholder="作業の具体的な内容"
               className={`${field} resize-y`}
@@ -488,7 +653,10 @@ export function DailyReportPanel({
                   inputMode="decimal"
                   disabled={disabled}
                   value={draftKm}
-                  onChange={(e) => setDraftKm(e.target.value)}
+                  onChange={(e) => {
+                    touchedRef.current = true;
+                    setDraftKm(e.target.value);
+                  }}
                   placeholder="例: 42.5"
                   autoComplete="off"
                   className={field}
@@ -508,7 +676,10 @@ export function DailyReportPanel({
                   inputMode="numeric"
                   disabled={disabled}
                   value={draftToll}
-                  onChange={(e) => setDraftToll(e.target.value)}
+                  onChange={(e) => {
+                    touchedRef.current = true;
+                    setDraftToll(e.target.value);
+                  }}
                   placeholder="例: 1200"
                   autoComplete="off"
                   className={field}
@@ -529,7 +700,10 @@ export function DailyReportPanel({
                 rows={3}
                 disabled={disabled}
                 value={draftNotes}
-                onChange={(e) => setDraftNotes(e.target.value)}
+                onChange={(e) => {
+                  touchedRef.current = true;
+                  setDraftNotes(e.target.value);
+                }}
                 maxLength={4000}
                 placeholder="連絡・依頼・特記事項など"
                 className={`${field} resize-y`}
@@ -537,19 +711,10 @@ export function DailyReportPanel({
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={disabled || isPending || isResetPending}
-            className="w-full rounded-2xl border border-neutral-300 bg-neutral-900 px-4 py-3.5 text-base font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-white dark:text-neutral-950"
-            aria-busy={isPending}
-          >
-            {isPending ? "保存中…" : "日報を保存"}
-          </button>
-
           <div className="flex flex-col items-stretch gap-1.5 border-t border-neutral-200 pt-3 dark:border-neutral-700">
             <button
               type="button"
-              disabled={disabled || isPending || isResetPending}
+              disabled={disabled || saveStatus === "saving" || isResetPending}
               onClick={handleResetClick}
               className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
               aria-busy={isResetPending}
@@ -557,7 +722,7 @@ export function DailyReportPanel({
               {isResetPending ? "実行中" : "リセット"}
             </button>
             <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-              入力をすべて空に戻します（保存で反映）
+              入力をすべて空に戻します（すぐに反映）
             </p>
           </div>
         </form>
