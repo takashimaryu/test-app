@@ -98,7 +98,12 @@ function parseReportBanner(q: Search): ReportBanner {
     }
     if (code === "work_type_required") {
       return {
-        err: "作業内容を1つ以上選ぶか、写真を追加するか、「リセット」ですべて空にしてから保存してください。",
+        err: "作業内容を1つ以上選んでから保存するか、「リセット」ですべて空にしてから保存してください。",
+      };
+    }
+    if (code === "photo_required") {
+      return {
+        err: "日報写真を最低1枚添付してください。すべて空にする場合は「リセット」してから保存してください。",
       };
     }
     if (code === "bad_work_other") {

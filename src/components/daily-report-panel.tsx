@@ -55,7 +55,7 @@ function collapsedSummaryLine(initial: DailyReportInitial, pendingPhotoCount: nu
     bits.push(`作業${initial.workTypes.length}種`);
   }
   if (initial.photos.length) {
-    bits.push(`写真${initial.photos.length}枚`);
+    bits.push(`日報写真${initial.photos.length}枚`);
   }
   if (initial.distanceKm.trim() || initial.tollYen.trim()) {
     bits.push("距離・料金あり");
@@ -292,13 +292,13 @@ export function DailyReportPanel({
         {!disabled ? (
           <button
             type="button"
-            className={`${toggleBtn} min-w-[2.75rem] text-lg leading-none tabular-nums`}
+            className={`${toggleBtn} min-w-[3.25rem] px-3.5 py-2.5 text-2xl leading-none tabular-nums`}
             aria-expanded={expanded}
             aria-controls="daily-report-panel-body"
             aria-label={expanded ? "日報を閉じる" : "日報を開く"}
             onClick={() => setExpanded((v) => !v)}
           >
-            <span aria-hidden="true">{expanded ? "△" : "▽"}</span>
+            <span aria-hidden="true">{expanded ? "▲" : "▼"}</span>
           </button>
         ) : null}
       </div>
@@ -318,7 +318,10 @@ export function DailyReportPanel({
           ))}
 
           <fieldset className="min-w-0 space-y-3 border-0 p-0">
-            <legend className={legendClass}>作業内容（複数選択可）</legend>
+            <legend className={legendClass}>
+              <span className="text-neutral-800 dark:text-neutral-100">作業内容（複数選択可）</span>
+              <span className="text-rose-600 dark:text-rose-400">※必須</span>
+            </legend>
 
             <div className="grid grid-cols-3 gap-2">
               {WORK_MAIN_THREE.map((opt) => (
@@ -376,77 +379,15 @@ export function DailyReportPanel({
             />
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="rep-km"
-                  className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
-                >
-                  移動距離（km）
-                </label>
-                <input
-                  id="rep-km"
-                  name="distance_km"
-                  type="text"
-                  inputMode="decimal"
-                  disabled={disabled}
-                  value={draftKm}
-                  onChange={(e) => setDraftKm(e.target.value)}
-                  placeholder="例: 42.5"
-                  autoComplete="off"
-                  className={field}
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="rep-toll"
-                  className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
-                >
-                  高速料金（円）
-                </label>
-                <input
-                  id="rep-toll"
-                  name="toll_yen"
-                  type="text"
-                  inputMode="numeric"
-                  disabled={disabled}
-                  value={draftToll}
-                  onChange={(e) => setDraftToll(e.target.value)}
-                  placeholder="例: 1200"
-                  autoComplete="off"
-                  className={field}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="rep-notes"
-                className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
-              >
-                連絡事項（自由入力）
-              </label>
-              <textarea
-                id="rep-notes"
-                name="notes"
-                rows={3}
-                disabled={disabled}
-                value={draftNotes}
-                onChange={(e) => setDraftNotes(e.target.value)}
-                maxLength={4000}
-                placeholder="連絡・依頼・特記事項など"
-                className={`${field} resize-y`}
-              />
-            </div>
-          </div>
-
           <fieldset className="min-w-0 space-y-2 border-0 p-0">
             <legend className={legendClass}>
-              現場写真（任意・最大{DAILY_REPORT_PHOTO_MAX_COUNT}枚・プレビュー）
+              <span className="text-neutral-800 dark:text-neutral-100">
+                日報写真（最大{DAILY_REPORT_PHOTO_MAX_COUNT}枚・プレビュー）
+              </span>
+              <span className="text-rose-600 dark:text-rose-400">※必須</span>
             </legend>
             <p className="text-sm text-neutral-500 dark:text-neutral-400">
-              JPEG / PNG / WebP、1枚あたり{DAILY_REPORT_PHOTO_MAX_BYTES / (1024 * 1024)}MB まで。
+              最低1枚は添付してください。JPEG / PNG / WebP、1枚あたり{DAILY_REPORT_PHOTO_MAX_BYTES / (1024 * 1024)}MB まで。
             </p>
 
             {(visibleExisting.length > 0 || pendingPhotos.length > 0) && (
@@ -534,6 +475,71 @@ export function DailyReportPanel({
             </div>
           </fieldset>
 
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor="rep-km"
+                  className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
+                >
+                  移動距離（km）
+                </label>
+                <input
+                  id="rep-km"
+                  name="distance_km"
+                  type="text"
+                  inputMode="decimal"
+                  disabled={disabled}
+                  value={draftKm}
+                  onChange={(e) => setDraftKm(e.target.value)}
+                  placeholder="例: 42.5"
+                  autoComplete="off"
+                  className={field}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="rep-toll"
+                  className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
+                >
+                  高速料金（円）
+                </label>
+                <input
+                  id="rep-toll"
+                  name="toll_yen"
+                  type="text"
+                  inputMode="numeric"
+                  disabled={disabled}
+                  value={draftToll}
+                  onChange={(e) => setDraftToll(e.target.value)}
+                  placeholder="例: 1200"
+                  autoComplete="off"
+                  className={field}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="rep-notes"
+                className="mb-1.5 block text-sm font-medium text-neutral-600 dark:text-neutral-400"
+              >
+                連絡事項（自由入力）
+              </label>
+              <textarea
+                id="rep-notes"
+                name="notes"
+                rows={3}
+                disabled={disabled}
+                value={draftNotes}
+                onChange={(e) => setDraftNotes(e.target.value)}
+                maxLength={4000}
+                placeholder="連絡・依頼・特記事項など"
+                className={`${field} resize-y`}
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={disabled || isPending || isResetPending}
@@ -553,10 +559,9 @@ export function DailyReportPanel({
             >
               {isResetPending ? "実行中" : "リセット"}
             </button>
-            <div className="space-y-0.5 text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-              <p>入力をすべて空に戻します（保存で反映。すべて空なら日報を削除）</p>
-              <p>入力をすべて空に戻します（保存で反映）</p>
-            </div>
+            <p className="text-center text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
+              入力をすべて空に戻します（保存で反映）
+            </p>
           </div>
         </form>
       </div>

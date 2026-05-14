@@ -174,10 +174,11 @@ export async function saveDailyReportAction(formData: FormData) {
       redirectReportErr("db");
     }
   } else {
-    const photoOnly =
-      hasPhotos && notes === "" && km === null && yen === null && workTypes.length === 0;
-    if (workTypes.length === 0 && !photoOnly) {
+    if (workTypes.length === 0) {
       redirectReportErr("work_type_required");
+    }
+    if (!hasPhotos) {
+      redirectReportErr("photo_required");
     }
     if (workTypes.includes("その他") && workOther === "") {
       redirectReportErr("bad_work_other");
