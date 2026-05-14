@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { WORK_TYPE_SET } from "@/lib/attendance/work-types";
 import { jstCalendarDateIso } from "@/lib/time/jst";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -51,10 +52,14 @@ export async function saveDailyReportAction(formData: FormData) {
   }
 
   const workDate = jstCalendarDateIso();
-  const workRaw = formData.get("work_content");
+  const workTypeRaw = formData.get("work_type");
+  const workType = typeof workTypeRaw === "string" ? workTypeRaw.trim() : "";
+
+  const workOtherRaw = formData.get("work_other");
+  const workOther =
+    typeof workOtherRaw === "string" ? workOtherRaw.trim().slice(0, MAX_TEXT) : "";
+
   const notesRaw = formData.get("notes");
-  const workContent =
-    typeof workRaw === "string" ? workRaw.trim().slice(0, MAX_TEXT) : "";
   const notes = typeof notesRaw === "string" ? notesRaw.trim().slice(0, MAX_TEXT) : "";
 
   const km = parseOptionalKm(formData.get("distance_km"));
@@ -66,7 +71,7 @@ export async function saveDailyReportAction(formData: FormData) {
     redirectReportErr("bad_toll");
   }
 
-  const allEmpty = workContent === "" && notes === "" && km === null && yen === null;
+  const allEmpty = workType === "" && notes === "" && km === null && yen === null;
 
   if (allEmpty) {
     const { error: delErr } = await supabase
@@ -79,12 +84,20 @@ export async function saveDailyReportAction(formData: FormData) {
       redirectReportErr("db");
     }
   } else {
+    if (workType === "" || !WORK_TYPE_SET.has(workType)) {
+      redirectReportErr("work_type_required");
+    }
+    if (workType === "その他" && workOther === "") {
+      redirectReportErr("bad_work_other");
+    }
+
     const now = new Date().toISOString();
     const { error: upErr } = await supabase.from("daily_report").upsert(
       {
         user_id: user.id,
         work_date: workDate,
-        work_content: workContent,
+        work_type: workType,
+        work_other: workType === "その他" ? workOther : "",
         distance_km: km,
         toll_yen: yen,
         notes,

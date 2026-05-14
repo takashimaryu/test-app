@@ -90,6 +90,12 @@ function parseReportBanner(q: Search): ReportBanner {
     if (code === "bad_toll") {
       return { err: "高速料金は 0〜99999999 の整数（円）で入力してください。" };
     }
+    if (code === "work_type_required") {
+      return { err: "作業内容を選ぶか、「記録しない」にしてから保存してください。" };
+    }
+    if (code === "bad_work_other") {
+      return { err: "「その他」を選んだときは、内容の入力が必要です。" };
+    }
     return { err: `日報を保存できませんでした（${code}）。` };
   }
   return null;
@@ -130,7 +136,7 @@ export default async function EmployeePage({
 
   const { data: reportRow, error: reportErr } = await supabase
     .from("daily_report")
-    .select("id, work_content, distance_km, toll_yen, notes, updated_at")
+    .select("id, work_type, work_other, distance_km, toll_yen, notes, updated_at")
     .eq("user_id", user.id)
     .eq("work_date", workDate)
     .maybeSingle();
@@ -152,7 +158,8 @@ export default async function EmployeePage({
         };
 
   const emptyReport: DailyReportInitial = {
-    workContent: "",
+    workType: "",
+    workOther: "",
     distanceKm: "",
     tollYen: "",
     notes: "",
@@ -174,7 +181,8 @@ export default async function EmployeePage({
   const reportInitial: DailyReportInitial = reportErr
     ? emptyReport
     : {
-        workContent: (reportRow?.work_content as string) ?? "",
+        workType: (reportRow?.work_type as string) ?? "",
+        workOther: (reportRow?.work_other as string) ?? "",
         distanceKm: formatKmForInput(reportRow?.distance_km),
         tollYen:
           reportRow?.toll_yen !== null && reportRow?.toll_yen !== undefined
@@ -185,7 +193,7 @@ export default async function EmployeePage({
 
   const reportPanelKey = reportErr
     ? "report-disabled"
-    : `${reportRow?.id ?? "none"}-${(reportRow?.updated_at as string) ?? ""}`;
+    : `${reportRow?.id ?? "none"}-${(reportRow?.work_type as string) ?? ""}-${(reportRow?.updated_at as string) ?? ""}`;
 
   return (
     <div className="flex min-h-full flex-1 flex-col bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
@@ -252,7 +260,11 @@ export default async function EmployeePage({
             <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
               supabase/migrations/20260215180000_daily_report_structured.sql
             </code>{" "}
-            も実行してください。
+            と{" "}
+            <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900">
+              supabase/migrations/20260215200000_daily_report_work_type.sql
+            </code>{" "}
+            も順に実行してください。
           </p>
         ) : null}
 

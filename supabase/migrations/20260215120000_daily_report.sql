@@ -4,7 +4,8 @@ create table if not exists public.daily_report (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   work_date date not null,
-  work_content text not null default '',
+  work_type text not null default '',
+  work_other text not null default '',
   distance_km numeric(12, 2),
   toll_yen integer,
   notes text not null default '',
@@ -12,7 +13,11 @@ create table if not exists public.daily_report (
   updated_at timestamptz not null default now(),
   constraint daily_report_one_per_user_day unique (user_id, work_date),
   constraint daily_report_distance_nonneg check (distance_km is null or distance_km >= 0),
-  constraint daily_report_toll_nonneg check (toll_yen is null or toll_yen >= 0)
+  constraint daily_report_toll_nonneg check (toll_yen is null or toll_yen >= 0),
+  constraint daily_report_work_type_allowed check (
+    work_type = ''
+    or work_type in ('誘導', '立会い', '投入', '試験', '荷揚げ', '警備', 'その他')
+  )
 );
 
 create index if not exists daily_report_user_date_idx

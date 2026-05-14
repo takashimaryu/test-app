@@ -1,6 +1,7 @@
--- 旧スキーマ（body のみ）からの移行。新規は 20260215120000 で構造化済みのため、多くの環境では no-op に近い。
+-- 旧スキーマ（body のみ）や列不足の補完。work_content 列は作らない（現行は work_type / work_other）。
 
-alter table public.daily_report add column if not exists work_content text not null default '';
+alter table public.daily_report add column if not exists work_type text not null default '';
+alter table public.daily_report add column if not exists work_other text not null default '';
 alter table public.daily_report add column if not exists distance_km numeric(12, 2);
 alter table public.daily_report add column if not exists toll_yen integer;
 alter table public.daily_report add column if not exists notes text not null default '';
@@ -16,14 +17,13 @@ begin
   ) then
     execute $m$
       update public.daily_report
-      set work_content = body
-      where coalesce(trim(work_content), '') = ''
-        and coalesce(trim(body), '') <> ''
+      set work_type = 'その他',
+          work_other = trim(body::text)
+      where coalesce(trim(body::text), '') <> ''
     $m$;
+    alter table public.daily_report drop column body;
   end if;
 end $$;
-
-alter table public.daily_report drop column if exists body;
 
 alter table public.daily_report drop constraint if exists daily_report_distance_nonneg;
 alter table public.daily_report
@@ -32,3 +32,10 @@ alter table public.daily_report
 alter table public.daily_report drop constraint if exists daily_report_toll_nonneg;
 alter table public.daily_report
   add constraint daily_report_toll_nonneg check (toll_yen is null or toll_yen >= 0);
+
+alter table public.daily_report drop constraint if exists daily_report_work_type_allowed;
+alter table public.daily_report
+  add constraint daily_report_work_type_allowed check (
+    work_type = ''
+    or work_type in ('誘導', '立会い', '投入', '試験', '荷揚げ', '警備', 'その他')
+  );
