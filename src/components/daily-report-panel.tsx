@@ -9,7 +9,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { saveDailyReport } from "@/app/employee/report-actions";
+import { saveDailyReport, submitDailyReport } from "@/app/employee/report-actions";
 import { reportSaveErrorMessage } from "@/lib/daily-report/report-save-errors";
 import {
   DAILY_REPORT_PHOTO_ACCEPT,
@@ -30,6 +30,7 @@ export type DailyReportInitial = {
   tollYen: string;
   notes: string;
   photos: DailyReportPhotoInitial[];
+  submittedAt: string | null;
 };
 
 const field =
@@ -50,6 +51,17 @@ const toggleBtn =
 const ALLOWED_IMAGE = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type PendingPhoto = { id: string; file: File; url: string };
+
+function formatSubmittedAt(iso: string): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}
 
 function collapsedSummaryLine(initial: DailyReportInitial, pendingPhotoCount: number): string {
   const bits: string[] = [];
@@ -95,6 +107,8 @@ export function DailyReportPanel({
   const touchedRef = useRef(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "submitted">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isResetPending, startResetTransition] = useTransition();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [portalReady, setPortalReady] = useState(false);
@@ -264,6 +278,15 @@ export function DailyReportPanel({
     return complete;
   }
 
+  function canSubmitReport(): boolean {
+    const wt = workTypesForSave();
+    return (
+      wt.length > 0 &&
+      hasPhotosForSave() &&
+      (!wt.includes("その他") || otherText.trim() !== "")
+    );
+  }
+
   function buildFormData(): FormData {
     const fd = new FormData();
     for (const v of mainPicked) {
@@ -389,7 +412,36 @@ export function DailyReportPanel({
     });
   };
 
+  const handleSubmitReportClick = async () => {
+    if (disabled || !canSubmitReport()) {
+      return;
+    }
+    setSubmitStatus("submitting");
+    setSubmitError(null);
+    setSaveError(null);
+    try {
+      const r = await submitDailyReport(buildFormData());
+      if (r.ok) {
+        setPendingPhotos((prev) => {
+          prev.forEach((p) => URL.revokeObjectURL(p.url));
+          return [];
+        });
+        setRemovedPaths(new Set());
+        touchedRef.current = false;
+        router.refresh();
+        setSubmitStatus("submitted");
+        return;
+      }
+      setSubmitError(reportSaveErrorMessage(r.code));
+      setSubmitStatus("idle");
+    } catch {
+      setSubmitError("日報を送信できませんでした。通信環境を確認してください。");
+      setSubmitStatus("idle");
+    }
+  };
+
   const bodyVisible = expanded || disabled;
+  const reportSubmittable = canSubmitReport();
 
   return (
     <>
@@ -468,11 +520,24 @@ export function DailyReportPanel({
             {saveError ? (
               <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{saveError}</p>
             ) : null}
+            {submitError ? (
+              <p className="text-sm font-medium text-rose-600 dark:text-rose-400">{submitError}</p>
+            ) : null}
             {saveStatus === "saving" ? (
               <p className="text-xs text-neutral-500 dark:text-neutral-400">保存中…</p>
             ) : null}
             {saveStatus === "saved" ? (
               <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">保存済み</p>
+            ) : null}
+            {initial.submittedAt ? (
+              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                送信済み（{formatSubmittedAt(initial.submittedAt)}）
+              </p>
+            ) : null}
+            {submitStatus === "submitted" && !initial.submittedAt ? (
+              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                日報を送信しました
+              </p>
             ) : null}
           </div>
 
@@ -712,9 +777,20 @@ export function DailyReportPanel({
           </div>
 
           <div className="flex flex-col items-stretch gap-1.5 border-t border-neutral-200 pt-3 dark:border-neutral-700">
+            {reportSubmittable ? (
+              <button
+                type="button"
+                disabled={disabled || submitStatus === "submitting" || saveStatus === "saving"}
+                onClick={handleSubmitReportClick}
+                className="w-full rounded-2xl border border-sky-700 bg-sky-600 px-4 py-3.5 text-base font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-sky-400 dark:bg-sky-500 dark:text-white"
+                aria-busy={submitStatus === "submitting"}
+              >
+                {submitStatus === "submitting" ? "送信中…" : "日報を送信"}
+              </button>
+            ) : null}
             <button
               type="button"
-              disabled={disabled || saveStatus === "saving" || isResetPending}
+              disabled={disabled || saveStatus === "saving" || isResetPending || submitStatus === "submitting"}
               onClick={handleResetClick}
               className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-900 shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-50"
               aria-busy={isResetPending}

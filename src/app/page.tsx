@@ -54,12 +54,20 @@ export default async function Home() {
         {supabaseReady ? (
           <div className="flex flex-col gap-3">
             {isLoggedIn ? (
-              <Link
-                href="/employee"
-                className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 text-lg font-semibold text-white dark:bg-white dark:text-neutral-950"
-              >
-                マイページへ
-              </Link>
+              <>
+                <Link
+                  href="/employee"
+                  className="flex min-h-14 w-full items-center justify-center rounded-2xl bg-neutral-900 px-4 text-lg font-semibold text-white dark:bg-white dark:text-neutral-950"
+                >
+                  マイページへ
+                </Link>
+                <Link
+                  href="/admin"
+                  className="flex min-h-12 w-full items-center justify-center rounded-2xl border border-neutral-300 px-4 text-base font-semibold text-neutral-900 dark:border-neutral-600 dark:text-neutral-50"
+                >
+                  管理画面へ
+                </Link>
+              </>
             ) : (
               <Link
                 href="/login"

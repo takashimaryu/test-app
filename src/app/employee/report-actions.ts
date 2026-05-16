@@ -243,3 +243,59 @@ export async function saveDailyReport(formData: FormData): Promise<SaveDailyRepo
   revalidatePath("/employee", "page");
   return { ok: true };
 }
+
+/**
+ * 日報を送信済みにする。現在のフォーム内容を先に保存し、管理画面で見える submitted_at を付ける。
+ * メール送信を入れる場合は、この更新が成功した後に追加する。
+ */
+export async function submitDailyReport(formData: FormData): Promise<SaveDailyReportResult> {
+  const saved = await saveDailyReport(formData);
+  if (!saved.ok) {
+    return saved;
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const workDate = jstCalendarDateIso();
+  const { data: row, error: selErr } = await supabase
+    .from("daily_report")
+    .select("id, work_types, photo_paths")
+    .eq("user_id", user.id)
+    .eq("work_date", workDate)
+    .maybeSingle();
+
+  if (selErr) {
+    return { ok: false, code: "db" };
+  }
+  const workTypes = parseWorkTypesFromForm(formData);
+  const photos = normalizePhotoPathsFromDb(row?.photo_paths);
+  if (!row || workTypes.length === 0) {
+    return { ok: false, code: "work_type_required" };
+  }
+  if (photos.length === 0) {
+    return { ok: false, code: "photo_required" };
+  }
+
+  const { error: updErr } = await supabase
+    .from("daily_report")
+    .update({
+      submitted_at: new Date().toISOString(),
+      submitted_by: user.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+
+  if (updErr) {
+    return { ok: false, code: "db" };
+  }
+
+  revalidatePath("/employee", "page");
+  revalidatePath("/admin", "page");
+  return { ok: true };
+}

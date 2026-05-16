@@ -140,7 +140,7 @@ export default async function EmployeePage({
 
   const { data: reportRow, error: reportErr } = await supabase
     .from("daily_report")
-    .select("id, work_types, work_other, distance_km, toll_yen, notes, photo_paths, updated_at")
+    .select("id, work_types, work_other, distance_km, toll_yen, notes, photo_paths, submitted_at, updated_at")
     .eq("user_id", user.id)
     .eq("work_date", workDate)
     .maybeSingle();
@@ -168,6 +168,7 @@ export default async function EmployeePage({
     tollYen: "",
     notes: "",
     photos: [],
+    submittedAt: null,
   };
 
   const formatKmForInput = (v: unknown): string => {
@@ -205,6 +206,7 @@ export default async function EmployeePage({
           supabase,
           normalizePhotoPathsFromDb(reportRow?.photo_paths),
         ),
+        submittedAt: (reportRow?.submitted_at as string | null) ?? null,
       };
 
   const reportTypesKey = [...reportInitial.workTypes].sort().join(",");
