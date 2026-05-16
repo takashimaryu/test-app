@@ -213,6 +213,16 @@ export default async function EmployeePage({
     ? "report-disabled"
     : `${reportRow?.id ?? "none"}-${reportTypesKey}-${photoPathsKey}-${(reportRow?.updated_at as string) ?? ""}`;
 
+  const attendanceComplete = Boolean(today?.clock_out_at);
+  const reportComplete =
+    !reportErr && reportInitial.workTypes.length > 0 && reportInitial.photos.length > 0;
+  const completedCount = Number(attendanceComplete) + Number(reportComplete);
+  const progressPercent = `${completedCount * 50}%`;
+  const statusTabs = [
+    { href: "#attendance", label: "出退勤", complete: attendanceComplete },
+    { href: "#daily-report", label: "日報", complete: reportComplete },
+  ];
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-white text-neutral-950 dark:bg-neutral-950 dark:text-neutral-50">
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-5 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))]">
@@ -221,6 +231,60 @@ export default async function EmployeePage({
           <h1 className="text-3xl font-semibold leading-tight">ようこそ</h1>
           <p className="text-lg text-neutral-800 dark:text-neutral-200">{displayName}</p>
         </header>
+
+        <section
+          aria-label="今日の進捗"
+          className="space-y-3 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-4 dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                今日の進捗
+              </h2>
+              <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                {completedCount}/2 完了
+              </p>
+            </div>
+            <p className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+              {completedCount === 2 ? "完了" : "未完了"}
+            </p>
+          </div>
+
+          <div
+            className="h-2 overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-700"
+            aria-hidden="true"
+          >
+            <div
+              className="h-full rounded-full bg-sky-600 transition-[width] dark:bg-sky-500"
+              style={{ width: progressPercent }}
+            />
+          </div>
+
+          <nav className="grid grid-cols-2 gap-2" aria-label="進捗タブ">
+            {statusTabs.map((tab) => (
+              <a
+                key={tab.href}
+                href={tab.href}
+                className={`rounded-xl border px-3 py-2 text-center text-sm font-semibold transition-colors ${
+                  tab.complete
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"
+                    : "border-neutral-200 bg-white text-neutral-700 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-200"
+                }`}
+              >
+                <span className="block">{tab.label}</span>
+                <span
+                  className={`mt-0.5 block text-xs ${
+                    tab.complete
+                      ? "text-emerald-700 dark:text-emerald-200"
+                      : "text-neutral-500 dark:text-neutral-400"
+                  }`}
+                >
+                  {tab.complete ? "完了" : "未完了"}
+                </span>
+              </a>
+            ))}
+          </nav>
+        </section>
 
         {attErr ? (
           <p
@@ -236,19 +300,21 @@ export default async function EmployeePage({
           </p>
         ) : null}
 
-        <AttendancePanel
-          key={[
-            flash?.kind ?? "",
-            today?.work_date ?? "",
-            today?.clock_in_at ?? "",
-            today?.clock_out_at ?? "",
-            justStampedIso ?? "",
-            firstParam(q.ms) ?? "",
-          ].join("|")}
-          today={today}
-          flash={flash}
-          justStampedIso={justStampedIso}
-        />
+        <div id="attendance">
+          <AttendancePanel
+            key={[
+              flash?.kind ?? "",
+              today?.work_date ?? "",
+              today?.clock_in_at ?? "",
+              today?.clock_out_at ?? "",
+              justStampedIso ?? "",
+              firstParam(q.ms) ?? "",
+            ].join("|")}
+            today={today}
+            flash={flash}
+            justStampedIso={justStampedIso}
+          />
+        </div>
 
         {reportBanner === "ok" ? (
           <p
@@ -296,11 +362,13 @@ export default async function EmployeePage({
           </p>
         ) : null}
 
-        <DailyReportPanel
-          key={reportPanelKey}
-          initial={reportInitial}
-          disabled={Boolean(reportErr)}
-        />
+        <div id="daily-report">
+          <DailyReportPanel
+            key={reportPanelKey}
+            initial={reportInitial}
+            disabled={Boolean(reportErr)}
+          />
+        </div>
 
         <SignOutButton />
 
