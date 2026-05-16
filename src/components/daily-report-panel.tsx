@@ -777,17 +777,20 @@ export function DailyReportPanel({
           </div>
 
           <div className="flex flex-col items-stretch gap-1.5 border-t border-neutral-200 pt-3 dark:border-neutral-700">
-            {reportSubmittable ? (
-              <button
-                type="button"
-                disabled={disabled || submitStatus === "submitting" || saveStatus === "saving"}
-                onClick={handleSubmitReportClick}
-                className="w-full rounded-2xl border border-sky-700 bg-sky-600 px-4 py-3.5 text-base font-semibold text-white shadow-sm active:scale-[0.99] disabled:opacity-60 dark:border-sky-400 dark:bg-sky-500 dark:text-white"
-                aria-busy={submitStatus === "submitting"}
-              >
-                {submitStatus === "submitting" ? "送信中…" : "日報を送信"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              disabled={
+                disabled ||
+                !reportSubmittable ||
+                submitStatus === "submitting" ||
+                saveStatus === "saving"
+              }
+              onClick={handleSubmitReportClick}
+              className="w-full rounded-2xl border border-sky-700 bg-sky-600 px-4 py-3.5 text-base font-semibold text-white shadow-sm active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 dark:border-sky-400 dark:bg-sky-500 dark:text-white"
+              aria-busy={submitStatus === "submitting"}
+            >
+              {submitStatus === "submitting" ? "送信中…" : "日報を送信"}
+            </button>
             <button
               type="button"
               disabled={disabled || saveStatus === "saving" || isResetPending || submitStatus === "submitting"}
