@@ -3,7 +3,8 @@ import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { normalizeWorkTypesFromDb } from "@/lib/attendance/work-types";
 import { normalizePhotoPathsFromDb, signedDailyReportPhotoUrls } from "@/lib/daily-report/photos";
-import { createAdminSupabaseClient, isAdminEmail } from "@/lib/supabase/admin";
+import { ensureOwnProfile, isAdminProfile } from "@/lib/profiles";
+import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type ReportRow = {
@@ -79,7 +80,8 @@ export default async function AdminPage() {
   if (!user) {
     redirect("/login");
   }
-  if (!isAdminEmail(user.email)) {
+  const profile = await ensureOwnProfile(sessionSupabase, user);
+  if (!isAdminProfile(profile)) {
     redirect("/employee");
   }
 
@@ -123,8 +125,22 @@ export default async function AdminPage() {
   const rows = (data ?? []) as ReportRow[];
   const userIds = [...new Set(rows.map((r) => r.user_id))];
   const users = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profiles } = await adminSupabase
+      .from("profiles")
+      .select("user_id, display_name")
+      .in("user_id", userIds);
+    for (const p of profiles ?? []) {
+      if (typeof p.display_name === "string" && p.display_name.trim()) {
+        users.set(p.user_id as string, p.display_name.trim());
+      }
+    }
+  }
   await Promise.all(
     userIds.map(async (id) => {
+      if (users.has(id)) {
+        return;
+      }
       const { data: userData } = await adminSupabase.auth.admin.getUserById(id);
       if (userData.user) {
         users.set(

@@ -11,6 +11,7 @@ import {
   normalizePhotoPathsFromDb,
   signedDailyReportPhotoUrls,
 } from "@/lib/daily-report/photos";
+import { displayNameFromProfile, ensureOwnProfile } from "@/lib/profiles";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type Search = {
@@ -125,6 +126,7 @@ export default async function EmployeePage({
     redirect("/login");
   }
 
+  const profile = await ensureOwnProfile(supabase, user);
   const q = await searchParams;
   const flash = parseFlash(q);
   const justStampedIso = parseStampedIso(q);
@@ -145,12 +147,7 @@ export default async function EmployeePage({
     .eq("work_date", workDate)
     .maybeSingle();
 
-  const displayName =
-    (user.user_metadata?.name as string | undefined) ??
-    (user.user_metadata?.full_name as string | undefined) ??
-    (user.user_metadata?.preferred_username as string | undefined) ??
-    user.email ??
-    "ゲスト";
+  const displayName = displayNameFromProfile(profile, user);
 
   const today =
     attErr || !todayRow
